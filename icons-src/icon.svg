@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Opaque full-bleed square: iOS applies its own mask. Safe margin ~20%. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#D2E4F6"/>
+      <stop offset="1" stop-color="#B8D3EE"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <g fill="none" stroke="#284F7C" stroke-width="46" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Row 1: checkmark -->
+    <path d="M226 360 l50 50 l92 -100"/>
+    <path d="M454 356 H798"/>
+    <!-- Row 2: dot -->
+    <path d="M454 512 H798"/>
+    <!-- Row 3: dot -->
+    <path d="M454 668 H798"/>
+  </g>
+  <g fill="#284F7C">
+    <circle cx="297" cy="512" r="34"/>
+    <circle cx="297" cy="668" r="34"/>
+  </g>
+</svg>
