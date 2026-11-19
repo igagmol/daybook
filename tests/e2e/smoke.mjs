@@ -65,6 +65,11 @@ async function swipeLeft(page, rowLocator, fraction = 0.8) {
 }
 
 const { ctx, page } = await newPage();
+// Local-profile mode for these tests: serve config.js with an empty client ID.
+await ctx.route('**/config.js', async (route) => {
+  const body = (await readFile(join(ROOT, 'config.js'), 'utf8')).replace(/GOOGLE_CLIENT_ID = "[^"]*"/, 'GOOGLE_CLIENT_ID = ""');
+  await route.fulfill({ body, contentType: 'text/javascript' });
+});
 currentPage = page;
 await page.goto(BASE);
 await page.waitForSelector('.tile');
@@ -332,7 +337,7 @@ currentPage = null;
 await step('signed-in: remembered account opens instantly offline; namespaces are separate', async () => {
   const { ctx: c2, page: p2 } = await newPage();
   await c2.route('**/config.js', async (route) => {
-    const body = (await readFile(join(ROOT, 'config.js'), 'utf8')).replace('GOOGLE_CLIENT_ID = ""', 'GOOGLE_CLIENT_ID = "test-client.apps.googleusercontent.com"');
+    const body = (await readFile(join(ROOT, 'config.js'), 'utf8')).replace(/GOOGLE_CLIENT_ID = "[^"]*"/, 'GOOGLE_CLIENT_ID = "test-client.apps.googleusercontent.com"');
     await route.fulfill({ body, contentType: 'text/javascript' });
   });
   await c2.route(/google|googleapis/, (route) => route.abort());
