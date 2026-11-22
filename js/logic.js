@@ -184,3 +184,29 @@ export function eventAlert(events, today) {
 export function pastEventIds(events, today) {
   return events.filter((e) => e.date < today).map((e) => e.id);
 }
+
+/* ---------- Daily check-ins (Language, Habits) ---------- */
+
+/** Id of the check-in item for one section and one day: one item per day, merged last-writer-wins. */
+export const checkinId = (kind, date) => `${kind}:${date}`;
+
+/** Map date -> count (only days with at least one completion) for one section. */
+export function checkinCounts(checkins, kind) {
+  const map = new Map();
+  for (const c of checkins) {
+    const n = Number(c.count) || 0;
+    if (c.kind === kind && n > 0) map.set(c.date, n);
+  }
+  return map;
+}
+
+/**
+ * Consecutive days with at least one completion, ending today.
+ * If today is not done yet, the streak still counts up to yesterday (it is not broken until the day ends).
+ */
+export function currentStreak(counts, today) {
+  let day = counts.get(today) ? today : addDays(today, -1);
+  let n = 0;
+  while (counts.get(day)) { n++; day = addDays(day, -1); }
+  return n;
+}

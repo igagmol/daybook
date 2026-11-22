@@ -13,6 +13,7 @@ import { createMoney } from './sections/money.js';
 import { createEvents } from './sections/events.js';
 import { createTasks } from './sections/tasks.js';
 import { createNotes } from './sections/notes.js';
+import { createDaily, todayCount } from './sections/daily.js';
 import { openAccountSheet } from './sections/account.js';
 
 let today = todayStr();
@@ -21,14 +22,24 @@ const ctx = { today: () => today };
 const TILES = [
   ['shopping', 'Shopping', 'cart'],
   ['meals', 'Meals', 'tomato'],
-  ['money', 'Money', 'dollar'],
-  ['events', 'Events', 'calendar'],
   ['tasks', 'Tasks', 'check'],
+  ['events', 'Events', 'calendar'],
+  ['language', 'Language', 'talk'],
+  ['habits', 'Habits', 'smile'],
+  ['money', 'Money', 'dollar'],
   ['notes', 'Notes', 'pencil'],
 ];
 
+// Daily check-in sections: presses allowed per day.
+const DAILY = { language: 1, habits: 3 };
+
 const app = document.getElementById('app');
-const sections = [createShopping(), createMeals(ctx), createMoney(), createEvents(ctx), createTasks(ctx), createNotes()];
+const sections = [
+  createShopping(), createMeals(ctx), createTasks(ctx), createEvents(ctx),
+  createDaily(ctx, { id: 'language', title: 'Language', max: DAILY.language }),
+  createDaily(ctx, { id: 'habits', title: 'Habits', max: DAILY.habits }),
+  createMoney(), createNotes(),
+];
 const panels = new Map();
 let openPanelId = null;
 
@@ -37,7 +48,7 @@ let openPanelId = null;
 function buildHome() {
   const grid = el('nav', { class: 'tiles', 'aria-label': 'Sections' },
     TILES.map(([id, label, ic], i) =>
-      el('button', { type: 'button', class: `tile tile-${i + 1}`, onclick: () => openPanel(id) },
+      el('button', { type: 'button', class: `tile tile-${i + 1} tile-${id}`, 'data-id': id, onclick: () => openPanel(id) },
         [
           el('span', { class: 'tile-icon' }, [icon(ic, 56)]),
           el('span', { class: 'tile-label', text: label }),
@@ -101,6 +112,20 @@ function closePanel() {
 function renderAll() {
   for (const s of sections) s.render();
   renderEventDot();
+  renderDailyTiles();
+}
+
+/** Language and Habits tiles: grey until done today, then green (Habits: three shades for 1, 2, 3). */
+function renderDailyTiles() {
+  for (const [id, max] of Object.entries(DAILY)) {
+    const tile = document.querySelector(`.tile-${id}`);
+    if (!tile) continue;
+    const n = Math.min(todayCount(id, today), max);
+    tile.dataset.level = max === 1 ? (n ? 'full' : '0') : String(n);
+    const label = TILES.find((t) => t[0] === id)[1];
+    const note = n ? (max > 1 ? `, done ${n} of ${max} today` : ', done today') : ', not done today';
+    tile.setAttribute('aria-label', `${label}${note}`);
+  }
 }
 
 /** Red dot on the Events tile for an event today, yellow for tomorrow or the day after. */
