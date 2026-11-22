@@ -634,7 +634,7 @@ input[type="date"]::-webkit-date-and-time-value, input[type="time"]::-webkit-dat
 /* ---------- Toast ---------- */
 
 .toast {
-  position: fixed; left: 50%; z-index: 40; /* above panels, below sheets */
+  position: fixed; left: 50%; z-index: 80; /* above sheets: "Update available" is shown from the Account sheet */
   bottom: calc(var(--safe-b) + 92px);
   transform: translate(-50%, 12px); opacity: 0;
   transition: transform var(--dur) var(--ease), opacity var(--dur) var(--ease);
