@@ -1,15 +1,19 @@
 import * as store from '../store.js';
 import { el, openSheet, confirmSheet, swipeRow, plusButton, field } from '../ui.js';
+import { groupShopping } from '../logic.js';
 
 export function createShopping() {
   const listEl = el('ul', { class: 'rows', 'aria-label': 'Shopping list' });
 
   function render() {
-    const items = store.list('shopping');
+    // Same item from several meals (or typed by hand too) shows once, with a count.
+    const groups = groupShopping(store.list('shopping'));
     listEl.replaceChildren(
-      ...items.map((it) =>
-        swipeRow(el('div', { class: 'row-card' }, [el('span', { class: 'row-text', text: it.text })]),
-          () => store.remove('shopping', it.id), { label: it.text }),
+      ...groups.map((g) =>
+        swipeRow(el('div', { class: 'row-card' }, [
+          el('span', { class: 'row-text', text: g.text }),
+          g.count > 1 ? el('span', { class: 'row-meta', text: `×${g.count}`, 'aria-label': `${g.count} times` }) : null,
+        ]), () => store.remove('shopping', g.ids), { label: g.text }),
       ),
     );
   }

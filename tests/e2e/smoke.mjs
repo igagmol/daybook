@@ -48,7 +48,9 @@ async function newPage(opts = {}) {
 }
 
 const shot = (page, name) => page.screenshot({ path: join(SHOTS, `${name}.png`) });
-const openSection = async (page, label) => { await page.getByRole('button', { name: label, exact: true }).click(); await page.waitForTimeout(260); };
+const openSection = async (page, label) => { await page.locator('.tile', { has: page.locator('.tile-label', { hasText: new RegExp(`^${label}$`) }) }).click(); await page.waitForTimeout(260); };
+const closeTopSheet = async (page) => { await page.keyboard.press('Escape'); await page.waitForTimeout(260); };
+const isoIn = (page, n) => page.evaluate((n) => { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }, n);
 const back = async (page) => { await page.locator('.panel.open .back-btn').click(); await page.waitForTimeout(260); };
 const tapBackdrop = async (page) => { await page.locator('.sheet-layer.open .sheet-backdrop').last().click({ position: { x: 20, y: 12 } }); await page.waitForTimeout(260); };
 
@@ -137,10 +139,16 @@ await step('meals: 7 chips, new recipe assigned, swipe removes from day only, ma
   await page.waitForTimeout(250);
   await page.getByRole('button', { name: 'New recipe' }).click();
   await page.waitForTimeout(250);
-  await page.locator('.sheet').last().locator('input').fill('Lentil soup');
-  await page.locator('.sheet').last().locator('textarea').fill('Cumin');
+  await page.locator('.sheet').last().locator('input').first().fill('Lentil soup');
+  const ingInput = page.locator('.sheet').last().getByRole('textbox', { name: 'Add an ingredient' });
+  await ingInput.fill('Cumin');
+  await ingInput.press('Enter');
+  await ingInput.fill('Lentils');
   await page.locator('.sheet').last().getByRole('button', { name: 'Save' }).click();
   await page.waitForTimeout(300);
+  // Saving opens the planned meal with its ingredients (typed-but-not-added one included).
+  assert.deepEqual(await page.locator('.sheet').last().locator('.ing-row .row-text').allTextContents(), ['Cumin', 'Lentils']);
+  await closeTopSheet(page);
   const lunch = page.locator('.meal-card').nth(1);
   assert.deepEqual(await lunch.locator('.row-text').allTextContents(), ['Lentil soup']);
   // add the same recipe to dinner via the picker, and to tomorrow
@@ -148,12 +156,14 @@ await step('meals: 7 chips, new recipe assigned, swipe removes from day only, ma
   await page.waitForTimeout(250);
   await page.locator('.sheet .pick-row', { hasText: 'Lentil soup' }).click();
   await page.waitForTimeout(250);
+  await closeTopSheet(page);
   await chips.nth(1).click();
   await page.getByRole('button', { name: 'Add to Breakfast' }).click();
   await page.waitForTimeout(250);
   await page.locator('.sheet input[type=search]').fill('lent');
   await page.locator('.sheet .pick-row', { hasText: 'Lentil soup' }).click();
   await page.waitForTimeout(250);
+  await closeTopSheet(page);
   await chips.first().click();
   await shot(page, '04-meals');
   await swipeLeft(page, page.locator('.meal-card').nth(3).locator('.swipe-row').first());
@@ -245,6 +255,141 @@ await step('events: month grid (Mon first), add from day sheet, dot, list view, 
   await swipeLeft(page, page.locator('.event-list .swipe-row').first());
   assert.deepEqual(await page.locator('.event-list .row-text').allTextContents(), ['Trip']);
   await back(page);
+});
+
+await step('recipes: old notes become ingredients; catalog suggestions', async () => {
+  await page.evaluate(() => {
+    const k = 'daybook:v1:local:data';
+    const d = JSON.parse(localStorage.getItem(k) || '{"version":1}');
+    d.recipes = [{ id: 'old1', name: 'Paella', notes: 'Arroz.\nGambas\n\nPimiento rojo', createdAt: 1, updatedAt: 1 }];
+    localStorage.setItem(k, JSON.stringify(d));
+  });
+  await page.reload(); await page.waitForSelector('.tile');
+  const d = await page.evaluate(() => JSON.parse(localStorage.getItem('daybook:v1:local:data')));
+  assert.deepEqual(d.recipes.find((r) => r.id === 'old1').ingredients.map((i) => i.name), ['Arroz', 'Gambas', 'Pimiento rojo']);
+  const catalog = d.ingredients.filter((i) => !i.deletedAt).map((i) => i.name);
+  for (const n of ['Arroz', 'Gambas', 'Pimiento rojo', 'Cumin', 'Lentils']) assert.ok(catalog.includes(n), n);
+  // New recipe: suggestions come from the catalog.
+  await openSection(page, 'Meals');
+  await page.getByRole('button', { name: 'Manage recipes' }).click();
+  await page.waitForTimeout(250);
+  await page.getByRole('button', { name: 'Add recipe' }).click();
+  await page.waitForTimeout(250);
+  const s = page.locator('.sheet').last();
+  await s.locator('input').first().fill('Arroz con pollo');
+  await s.getByRole('textbox', { name: 'Add an ingredient' }).fill('ar');
+  assert.deepEqual(await s.locator('.ing-suggest .chip').allTextContents(), ['Arroz']);
+  await s.locator('.ing-suggest .chip', { hasText: 'Arroz' }).click();
+  await s.getByRole('textbox', { name: 'Add an ingredient' }).fill('Pollo');
+  await s.getByRole('button', { name: 'Add ingredient' }).click();
+  assert.deepEqual(await s.locator('.ing-row .row-text').allTextContents(), ['Arroz', 'Pollo']);
+  await shot(page, '05b-recipe-form');
+  await s.getByRole('button', { name: 'Save' }).click();
+  await page.waitForTimeout(300);
+  await page.locator('.sheet').last().getByRole('button', { name: 'Ingredients', exact: true }).click();
+  await page.waitForTimeout(250);
+  assert.deepEqual(await page.locator('.sheet').last().locator('.row-text').allTextContents(), ['Arroz', 'Cumin', 'Gambas', 'Lentils', 'Pimiento rojo', 'Pollo']);
+  // Swipe removes a suggestion from the catalog only.
+  await swipeLeft(page, page.locator('.sheet').last().locator('.swipe-row').nth(1));
+  assert.deepEqual(await page.locator('.sheet').last().locator('.row-text').allTextContents(), ['Arroz', 'Gambas', 'Lentils', 'Pimiento rojo', 'Pollo']);
+  await closeTopSheet(page); await closeTopSheet(page);
+  await back(page);
+});
+
+await step('meals: cart switches send ingredients to Shopping, no duplicates, removal cleans up', async () => {
+  await openSection(page, 'Meals');
+  await page.locator('.day-chip').nth(2).click();
+  await page.getByRole('button', { name: 'Add to Lunch' }).click();
+  await page.waitForTimeout(250);
+  await page.locator('.sheet .pick-row', { hasText: 'Paella' }).click();
+  await page.waitForTimeout(300);
+  const m = page.locator('.sheet').last();
+  assert.deepEqual(await m.locator('.ing-row .row-text').allTextContents(), ['Arroz', 'Gambas', 'Pimiento rojo']);
+  await m.getByRole('switch', { name: /Gambas/ }).click();
+  await m.getByRole('switch', { name: /Arroz/ }).click();
+  assert.equal(await m.getByRole('switch', { name: /Gambas/ }).getAttribute('aria-checked'), 'true');
+  await shot(page, '04b-meal-ingredients');
+  await m.getByRole('switch', { name: /Gambas/ }).click();
+  assert.equal(await m.getByRole('switch', { name: /Gambas/ }).getAttribute('aria-checked'), 'false');
+  await closeTopSheet(page);
+  // Same ingredient from a second meal shows once in Shopping, with a count.
+  await page.getByRole('button', { name: 'Add to Dinner' }).click();
+  await page.waitForTimeout(250);
+  await page.locator('.sheet .pick-row', { hasText: 'Arroz con pollo' }).click();
+  await page.waitForTimeout(300);
+  await page.locator('.sheet').last().getByRole('switch', { name: /Arroz/ }).click();
+  await closeTopSheet(page);
+  assert.equal(await page.locator('.meal-card').nth(1).locator('.row-cart').textContent(), '1');
+  await back(page);
+  await openSection(page, 'Shopping');
+  const arroz = page.locator('#p-shopping .swipe-row', { hasText: 'Arroz' });
+  assert.equal(await arroz.count(), 1);
+  assert.equal(await arroz.locator('.row-meta').textContent(), '×2');
+  assert.equal(await page.locator('#p-shopping .row-text', { hasText: 'Gambas' }).count(), 0);
+  await shot(page, '03b-shopping-from-meals');
+  await back(page);
+  // Removing the dinner meal takes its item off the list; reopening lunch shows the switch still on.
+  await openSection(page, 'Meals');
+  await page.locator('.day-chip').nth(2).click();
+  await swipeLeft(page, page.locator('.meal-card').nth(3).locator('.swipe-row').first());
+  await page.locator('.meal-card').nth(1).locator('.row-btn').click();
+  await page.waitForTimeout(250);
+  assert.equal(await page.locator('.sheet').last().getByRole('switch', { name: /Arroz/ }).getAttribute('aria-checked'), 'true');
+  await closeTopSheet(page);
+  await back(page);
+  await openSection(page, 'Shopping');
+  assert.equal(await arroz.count(), 1);
+  assert.equal(await arroz.locator('.row-meta').count(), 0);
+  // Bought it: swiping it away turns the switch off.
+  await swipeLeft(page, arroz);
+  await back(page);
+  await openSection(page, 'Meals');
+  await page.locator('.day-chip').nth(2).click();
+  await page.locator('.meal-card').nth(1).locator('.row-btn').click();
+  await page.waitForTimeout(250);
+  assert.equal(await page.locator('.sheet').last().getByRole('switch', { name: /Arroz/ }).getAttribute('aria-checked'), 'false');
+  await closeTopSheet(page);
+  await back(page);
+});
+
+await step('events tile dot: yellow 1–2 days ahead, red today, gone when deleted; past events purged', async () => {
+  const dot = page.locator('#events-dot');
+  const seed = async (events) => {
+    await page.evaluate((events) => {
+      const k = 'daybook:v1:local:data';
+      const d = JSON.parse(localStorage.getItem(k) || '{"version":1}');
+      d.events = events;
+      localStorage.setItem(k, JSON.stringify(d));
+    }, events);
+    await page.reload(); await page.waitForSelector('.tile');
+  };
+  const [past, today, d1, d2, d3] = await Promise.all([-1, 0, 1, 2, 3].map((n) => isoIn(page, n)));
+  await seed([{ id: 'e3', title: 'Far', date: d3, time: '', createdAt: 1, updatedAt: 1 }]);
+  assert.equal(await dot.isHidden(), true);
+  await seed([{ id: 'e2', title: 'Soon', date: d2, time: '', createdAt: 1, updatedAt: 1 }]);
+  assert.equal(await dot.getAttribute('class'), 'tile-dot tile-dot-yellow');
+  await seed([{ id: 'e1', title: 'Tomorrow', date: d1, time: '', createdAt: 1, updatedAt: 1 }]);
+  assert.equal(await dot.getAttribute('class'), 'tile-dot tile-dot-yellow');
+  await seed([
+    { id: 'p', title: 'Old', date: past, time: '', createdAt: 1, updatedAt: 1 },
+    { id: 'e1', title: 'Tomorrow', date: d1, time: '', createdAt: 2, updatedAt: 2 },
+    { id: 'e0', title: 'Today thing', date: today, time: '', createdAt: 3, updatedAt: 3 },
+  ]);
+  assert.equal(await dot.getAttribute('class'), 'tile-dot tile-dot-red');
+  await shot(page, '01b-home-red-dot');
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('daybook:v1:local:data')).events);
+  assert.ok(stored.find((e) => e.id === 'p').deletedAt, 'past event deleted');
+  // Delete today's event by hand: red turns yellow; delete tomorrow's: dot goes.
+  await openSection(page, 'Events');
+  await page.getByRole('tab', { name: 'List' }).click();
+  assert.deepEqual(await page.locator('.event-list .row-text').allTextContents(), ['Today thing', 'Tomorrow']);
+  await swipeLeft(page, page.locator('.event-list .swipe-row').first());
+  await back(page);
+  assert.equal(await dot.getAttribute('class'), 'tile-dot tile-dot-yellow');
+  await openSection(page, 'Events');
+  await swipeLeft(page, page.locator('.event-list .swipe-row').first());
+  await back(page);
+  assert.equal(await dot.isHidden(), true);
 });
 
 await step('tasks: sorting, overdue colour, completion removes forever', async () => {

@@ -1,4 +1,5 @@
 // Pure list logic used by the sections. Unit tested.
+import { addDays } from './dates.js';
 
 /** Priority ascending (1 first), then due date ascending, then creation time. */
 export function sortTasks(tasks) {
@@ -60,4 +61,126 @@ export function formatEuro(cents) {
   const abs = Math.abs(cents);
   const euros = Math.floor(abs / 100).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   return `${sign}€${euros}.${String(abs % 100).padStart(2, '0')}`;
+}
+
+/* ---------- Ingredients ---------- */
+
+/** Case- and space-insensitive key for an ingredient or shopping item name. */
+export function nameKey(name) {
+  return String(name).trim().replace(/\s+/g, ' ').toLocaleLowerCase('es');
+}
+
+/**
+ * Catalog id for an ingredient name. Deterministic, so two devices that add or
+ * migrate the same ingredient create the same catalog entry (no duplicates after sync).
+ */
+export function ingredientId(name) {
+  return `ing:${nameKey(name)}`;
+}
+
+/** Clean up a typed ingredient name: trims, collapses spaces, drops list bullets and a final period. */
+export function cleanIngredientName(text) {
+  return String(text)
+    .replace(/^\s*(?:[-–—•*·]+|\d+[.)])\s*/, '')
+    .replace(/[.;,]+\s*$/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** Split old free-text recipe notes into ingredient names: one per line, no duplicates. */
+export function parseIngredientLines(text) {
+  const out = [];
+  const seen = new Set();
+  for (const line of String(text || '').split(/\r?\n/)) {
+    const name = cleanIngredientName(line).slice(0, 120);
+    if (!name || seen.has(nameKey(name))) continue;
+    seen.add(nameKey(name));
+    out.push(name);
+  }
+  return out;
+}
+
+/**
+ * One-time migration of recipes that still have the old "notes" text and no ingredient list.
+ * Each line of the notes becomes an ingredient, added to the catalog.
+ * Mutates `data` (recipes + ingredients). Returns true when something changed.
+ */
+export function migrateRecipes(data, stamp = Date.now) {
+  let changed = false;
+  const catalog = new Map(data.ingredients.map((i) => [i.id, i]));
+  for (const r of data.recipes) {
+    if (r.deletedAt || Array.isArray(r.ingredients)) continue;
+    const names = parseIngredientLines(r.notes);
+    r.ingredients = names.map((name) => ({ id: ingredientId(name), name }));
+    delete r.notes;
+    r.updatedAt = stamp();
+    changed = true;
+    for (const ing of r.ingredients) {
+      const existing = catalog.get(ing.id);
+      if (existing && !existing.deletedAt) continue;
+      const t = stamp();
+      if (existing) {
+        delete existing.deletedAt;
+        Object.assign(existing, { name: ing.name, updatedAt: t });
+      } else {
+        const item = { id: ing.id, name: ing.name, createdAt: t, updatedAt: t };
+        data.ingredients.push(item);
+        catalog.set(item.id, item);
+      }
+    }
+  }
+  return changed;
+}
+
+/** Catalog suggestions for a typed query, excluding ids already in the recipe. */
+export function suggestIngredients(catalog, query, excludeIds = [], limit = 30) {
+  const q = nameKey(query);
+  const skip = new Set(excludeIds);
+  return [...catalog]
+    .filter((i) => !skip.has(i.id) && (!q || nameKey(i.name).includes(q)))
+    .sort((a, b) => {
+      // Names that start with the query first, then alphabetical.
+      const sa = q && nameKey(a.name).startsWith(q) ? 0 : 1;
+      const sb = q && nameKey(b.name).startsWith(q) ? 0 : 1;
+      return sa - sb || a.name.localeCompare(b.name, 'es', { sensitivity: 'base' });
+    })
+    .slice(0, limit);
+}
+
+/* ---------- Shopping ---------- */
+
+/**
+ * Group shopping items with the same name so an ingredient needed by several
+ * meals shows once. Keeps the order of first appearance.
+ */
+export function groupShopping(items) {
+  const groups = new Map();
+  for (const it of items) {
+    const k = nameKey(it.text);
+    const g = groups.get(k);
+    if (g) { g.ids.push(it.id); g.count++; }
+    else groups.set(k, { key: k, text: it.text, ids: [it.id], count: 1 });
+  }
+  return [...groups.values()];
+}
+
+/* ---------- Events ---------- */
+
+/**
+ * Home-screen indicator for the Events tile: "red" when an event is today,
+ * "yellow" when one is tomorrow or the day after, otherwise null. Red wins.
+ */
+export function eventAlert(events, today) {
+  const soon = new Set([addDays(today, 1), addDays(today, 2)]);
+  let level = null;
+  for (const e of events) {
+    if (e.date === today) return 'red';
+    if (soon.has(e.date)) level = 'yellow';
+  }
+  return level;
+}
+
+/** Ids of events whose date is before today (they are deleted automatically). */
+export function pastEventIds(events, today) {
+  return events.filter((e) => e.date < today).map((e) => e.id);
 }

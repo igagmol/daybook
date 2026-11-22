@@ -83,7 +83,7 @@ Esto permite el botón **Sign in with Google** y la copia en Google Drive. Tarda
    (solo eso: sin `/daybook` y sin barra al final).
 6. En **URIs de redirección autorizados** pulsa **+ Añadir URI** y escribe exactamente:
    `https://igagmol.github.io/daybook/`
-   (con la barra final). Sirve para el plan B de inicio de sesión en el iPhone, ver el punto 6.
+   (con la barra final). Sirve para el plan B de inicio de sesión en el iPhone, ver el punto 7.
 7. Pulsa **Crear**.
 8. Aparece una ventana con el **ID de cliente** (algo como `123456789-abc...apps.googleusercontent.com`). Pulsa el icono de copiar a su lado.
 9. **Pégalo en el chat de Claude.** No hace falta el "secreto de cliente": no lo pegues en ningún sitio.
@@ -110,18 +110,43 @@ Si prefieres dejarla en Prueba: en esa misma página, en **Usuarios de prueba**,
 - Con sesión iniciada, se copian a tu Google Drive en la carpeta **Daily App**, archivo `daily-app-data.json`. Se sincroniza al abrir la app, al volver a ella, unos 3 segundos después de cada cambio y con el botón **Sync now**.
 - La app solo puede ver los archivos que ella misma crea en tu Drive (permiso `drive.file`), nada más.
 - Si borras la carpeta o el archivo en Drive, la app los vuelve a crear con lo que hay en el teléfono. Nunca se pierden datos por eso.
-- Nada se borra solo. Solo se borra lo que tú borras (deslizando a la izquierda, "Clear all", completando una tarea o borrando una receta).
+- Casi nada se borra solo. Solo se borra lo que tú borras (deslizando a la izquierda, "Clear all", completando una tarea o borrando una receta). La única excepción son los **eventos pasados**: al día siguiente de su fecha se borran automáticamente.
 - **Copia de seguridad manual:** icono de persona → **Export backup** (copia todo al portapapeles; guárdalo en Notas, por ejemplo). Para recuperarla: **Import backup**, pega el texto y confirma. Importar nunca borra nada, solo añade.
 - **Sign out** no borra nada: los datos se quedan en el teléfono y vuelven al entrar de nuevo con la misma cuenta.
 
-## 6. Inicio de sesión dentro de la app del iPhone (lo que he averiguado)
+## 6. Recetas, compra automática y aviso de eventos
+
+### Recetas con ingredientes
+1. En **Meals** pulsa **Manage recipes** y luego el **+** (o elige **New recipe** al añadir una comida).
+2. Escribe el **nombre** de la receta.
+3. Debajo, en **Add an ingredient**, escribe un ingrediente y pulsa **Intro** o el **+**. Mientras escribes aparecen como sugerencia todos los ingredientes que ya has usado en otras recetas: pulsa uno para añadirlo.
+4. Para quitar un ingrediente de la receta pulsa la **✕** a su derecha. Pulsa **Save**.
+
+Todos los ingredientes forman un catálogo común (para las sugerencias). Puedes verlo en **Manage recipes** → **Ingredients**; deslizando a la izquierda quitas una sugerencia (por ejemplo, una errata), pero las recetas que ya la usan la conservan.
+
+**Recetas antiguas:** el texto de notas de cada receta se ha convertido en ingredientes automáticamente, **un ingrediente por cada línea** (se quitan guiones, números de lista y el punto final).
+
+### Mandar ingredientes a la compra
+1. En **Meals** elige el día y pulsa la receta planificada (o añádela: al elegirla se abre sola).
+2. Aparecen sus ingredientes, cada uno con un **interruptor con un carrito**.
+3. Activa el carrito en los que tienes que comprar: aparecen en **Shopping** al instante. Si lo desactivas, se quitan.
+4. Si el mismo ingrediente viene de varias comidas, en **Shopping** sale una sola vez con **×2**, **×3**…
+5. Cuando lo compras y lo borras de **Shopping**, el interruptor de esa comida vuelve a apagarse. Si quitas la comida del día (o borras la receta), sus ingredientes también salen de la compra.
+
+### Punto en Eventos
+En la pantalla principal, el botón **Events** muestra:
+- un **punto rojo** si hay un evento **hoy**;
+- un **punto amarillo** si hay un evento **mañana o pasado mañana**;
+- nada en otro caso. El rojo tiene prioridad. Si borras el evento, el punto se actualiza al momento.
+
+## 7. Inicio de sesión dentro de la app del iPhone (lo que he averiguado)
 
 - La app usa primero la ventana emergente oficial de Google (Google Identity Services).
 - En apps añadidas a la pantalla de inicio de iOS, las ventanas emergentes a veces fallan o se quedan en blanco. Por eso he añadido un **plan B**: si la ventana no se abre, o se cierra sin devolver la sesión dentro de la app instalada, la app abre la página de Google en la propia app y vuelve a Daybook al terminar (flujo "redirect" de OAuth 2.0 para aplicaciones web del lado del cliente). Google lo sigue documentando (página actualizada en octubre de 2026), aunque lo marca como "legado" y recomienda su librería nueva. Para que funcione hace falta la **URI de redirección** del paso 4.5.6.
 - El permiso de Google dura 1 hora y no se guarda en el teléfono. Al abrir la app se intenta renovar en silencio; en el iPhone eso normalmente no es posible sin que pulses algo, así que verás **Sync paused** en la hoja de cuenta y el botón **Reconnect**. Tus datos siguen funcionando igual mientras tanto, y los cambios se suben al pulsar **Reconnect**.
 - Esto **solo se puede probar en tu iPhone real**. Si al iniciar sesión ves algo raro, descríbelo en el chat y lo arreglo.
 
-## 7. Para desarrolladores
+## 8. Para desarrolladores
 
 - Sin frameworks ni paso de compilación: HTML + CSS + JavaScript (módulos ES). Se sirve tal cual desde la raíz de la rama `main`.
 - `config.js`: versión y `GOOGLE_CLIENT_ID`.
@@ -131,7 +156,7 @@ Si prefieres dejarla en Prueba: en esa misma página, en **Usuarios de prueba**,
 - Iconos: el original está en `icons-src/icon.svg`; los PNG se generan con `npm run icons` (usa `@resvg/resvg-js`).
 - Antes de cada push que cambie la app: `node scripts/bump-version.mjs`.
 
-## 8. Assumptions (suposiciones que he tomado)
+## 9. Assumptions (suposiciones que he tomado)
 
 Donde la especificación no decía nada, elegí lo más simple:
 
@@ -150,3 +175,6 @@ Donde la especificación no decía nada, elegí lo más simple:
 13. **Fechas en inglés** dentro de la app (por ejemplo "Thu 19 Nov", "Saturday 28 November"), porque la interfaz está en inglés.
 14. **Avatar:** se carga la foto de Google de la cuenta; si no carga, se muestra un icono de persona.
 15. **Tests de interfaz con Chromium**: en este entorno no se pudo descargar WebKit, así que los tests se ejecutaron en Chromium con emulación de iPhone 15 Pro. El script usa WebKit automáticamente cuando está instalado.
+16. **Ingredientes:** el catálogo es una colección nueva (`ingredients`) cuyo id sale del nombre (`ing:arroz`), así dos teléfonos que añaden o migran el mismo ingrediente no crean duplicados al sincronizar. Cada receta guarda su lista `ingredients: [{ id, name }]`. Mayúsculas y espacios no cuentan ("Tomate" = "tomate").
+17. **Compra desde comidas:** cada ingrediente enviado es un elemento de Shopping vinculado a esa comida (`mealId`, `ingredientId`); el interruptor está encendido mientras ese elemento exista. En la lista se agrupan por nombre; deslizar borra el grupo entero.
+18. **Eventos pasados:** se borran al abrir la app, al volver a ella y si se queda abierta a medianoche (se comprueba cada minuto).
