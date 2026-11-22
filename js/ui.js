@@ -129,7 +129,7 @@ export function openSheet({ title, content = [], onClose, focus, label } = {}) {
     const done = () => {
       layer.remove();
       if (!sheetStack.length) document.body.classList.remove('has-sheet');
-      if (opener && opener.focus && document.contains(opener)) opener.focus({ preventScroll: true });
+      if (shouldRestoreFocus(opener)) opener.focus({ preventScroll: true });
       onClose?.();
     };
     if (reducedMotion()) done();
@@ -151,13 +151,36 @@ export function openSheet({ title, content = [], onClose, focus, label } = {}) {
   enableDragToClose(head, sheet, close);
 
   sheetStack.push(api);
+  const target = typeof focus === 'string' ? sheet.querySelector(focus) : focus;
+  // iOS only opens the keyboard for a field that is on screen when it is focused.
+  // A sheet that focuses a text field rises a few pixels instead of sliding in from below.
+  if (isTextField(target)) layer.classList.add('sheet-layer-input');
   // Force layout so the transition runs, then open.
   void layer.offsetHeight;
   layer.classList.add('open');
-  const target = typeof focus === 'string' ? sheet.querySelector(focus) : focus;
-  // Focus synchronously so iOS shows the keyboard (requires the user gesture).
+  // Focus synchronously, still inside the tap, so iOS shows the keyboard.
   (target || sheet).focus({ preventScroll: true });
   return api;
+}
+
+/** Fields that bring up the on-screen keyboard. */
+export function isTextField(node) {
+  if (!node) return false;
+  if (node.tagName === 'TEXTAREA') return !node.readOnly;
+  if (node.tagName !== 'INPUT' || node.readOnly || node.disabled) return false;
+  return ['text', 'search', 'email', 'url', 'tel', 'number', 'password'].includes(node.type);
+}
+
+/**
+ * After a sheet closes, give focus back to what opened it, unless the user has moved on:
+ * a field in a newly opened sheet keeps its focus (and the iOS keyboard stays open).
+ */
+function shouldRestoreFocus(opener) {
+  if (!opener?.focus || !document.contains(opener)) return false;
+  const active = document.activeElement;
+  if (active && active !== document.body) return false;
+  const top = sheetStack[sheetStack.length - 1];
+  return !top || top.el.contains(opener);
 }
 
 function enableDragToClose(handleArea, sheet, close) {
@@ -298,14 +321,18 @@ export function showToast(text, actionLabel, onAction) {
     el('span', { text }),
     actionLabel ? el('button', { type: 'button', class: 'toast-action', text: actionLabel, onclick: onAction }) : null,
   );
+  clearTimeout(toastHideTimer); // a toast shown right after a hide must stay visible
   root.hidden = false;
   requestAnimationFrame(() => root.classList.add('show'));
 }
 
+let toastHideTimer = null;
+
 export function hideToast() {
   const root = document.getElementById('toast');
   root.classList.remove('show');
-  setTimeout(() => { root.hidden = true; }, 200);
+  clearTimeout(toastHideTimer);
+  toastHideTimer = setTimeout(() => { root.hidden = true; }, 200);
 }
 
 /** Large round primary "+" button. */

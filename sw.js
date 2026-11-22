@@ -1,6 +1,6 @@
 // Daybook service worker. Cache-first for same-origin GET requests.
 // VERSION is updated by scripts/bump-version.mjs together with config.js.
-const VERSION = '1.4.1';
+const VERSION = '1.4.2';
 const CACHE = `daybook-v${VERSION}`;
 
 const FILES = [

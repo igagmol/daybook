@@ -156,6 +156,10 @@ La pantalla principal tiene ahora 8 botones: Shopping, Meals, Tasks, Events, **L
 - Si se te olvida pulsar al despertar, a las 18 horas ese "dormir" se descarta solo.
 - El sueño cuenta para **la noche del día que acaba**: si te acuestas el 22 a las 23:40, o el 23 a la 1:30 de la madrugada (cualquier hora antes de las 12:00), aparece en el **día 22**, de la hora de acostarte a la de despertarte. Los días con sueño tienen un **punto morado** en el calendario. Toca un día para ver debajo "23:40 → 07:15 · 7h 35m". Por defecto muestra "Last night" (la noche de ayer).
 
+### Teclado al añadir (versión 1.4.2)
+- Al pulsar **+** en Tasks (y en Shopping, Events, Money, Meals e Import), la hoja ya está en su sitio cuando se activa el campo de texto, para que el iPhone abra el teclado a la primera.
+- Si una hoja se cierra mientras se abre otra (por ejemplo **New recipe** desde el buscador de Meals, o pulsar **+** justo después de **Add**), la hoja que se cierra ya no le quita el cursor a la nueva, así que el teclado no se esconde.
+
 ## 7. Inicio de sesión dentro de la app del iPhone (lo que he averiguado)
 
 - La app usa primero la ventana emergente oficial de Google (Google Identity Services).

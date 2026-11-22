@@ -481,6 +481,75 @@ await step('tasks: sorting, overdue colour, completion removes forever', async (
   await back(page);
 });
 
+await step('keyboard: every add sheet focuses a field that is on screen, inside the tap', async () => {
+  // iOS only opens the keyboard when the focused field is visible at the moment of the tap.
+  const vp = page.viewportSize();
+  const tapAndMeasure = (selector) => page.evaluate((sel) => {
+    document.querySelector(sel).click();
+    const a = document.activeElement;
+    const r = a.getBoundingClientRect();
+    return { tag: a.tagName, top: r.top, bottom: r.bottom };
+  }, selector);
+  const cases = [
+    ['Shopping', '.panel.open .fab'],
+    ['Tasks', '.panel.open .fab'],
+    ['Events', '.panel.open .fab'],
+    ['Money', '.panel.open .fab'],
+    ['Meals', '.panel.open [aria-label="Add to Lunch"]'],
+  ];
+  for (const [section, sel] of cases) {
+    await openSection(page, section);
+    const m = await tapAndMeasure(sel);
+    assert.equal(m.tag, 'INPUT', `${section}: a field has focus`);
+    assert.ok(m.top >= 0 && m.bottom <= vp.height, `${section}: field on screen when focused (${m.top}..${m.bottom} of ${vp.height})`);
+    await page.waitForTimeout(260);
+    await closeTopSheet(page);
+    await back(page);
+  }
+});
+
+await step('keyboard: a closing sheet never takes focus from the next one', async () => {
+  // Meals: picker → New recipe. The picker closes while the recipe form opens.
+  await openSection(page, 'Meals');
+  await page.getByRole('button', { name: 'Add to Lunch' }).click();
+  await page.waitForTimeout(260);
+  await page.getByRole('button', { name: 'New recipe' }).click();
+  await page.waitForTimeout(400);
+  assert.equal(await page.evaluate(() => document.activeElement.closest('.sheet') && document.activeElement.tagName), 'INPUT', 'recipe name keeps focus');
+  await closeTopSheet(page);
+  await back(page);
+  // Tasks: add one, then tap + again straight away.
+  await openSection(page, 'Tasks');
+  await page.getByRole('button', { name: 'Add task' }).click();
+  await page.locator('.sheet').last().locator('input[type=text]').fill('Quick one');
+  await page.locator('.sheet').last().getByRole('button', { name: 'Add' }).click();
+  await page.waitForTimeout(50);
+  await page.getByRole('button', { name: 'Add task' }).click();
+  await page.waitForTimeout(400);
+  const active = await page.evaluate(() => ({ tag: document.activeElement.tagName, inSheet: Boolean(document.activeElement.closest('.sheet-layer.open')) }));
+  assert.deepEqual(active, { tag: 'INPUT', inSheet: true }, 'new task field keeps focus');
+  await page.locator('.sheet-layer.open .sheet').last().locator('input[type=text]').fill('Second');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(260);
+  assert.ok((await page.locator('#p-tasks .row-text').allTextContents()).includes('Second'));
+  await back(page);
+});
+
+await step('toast: shown again right after hiding stays visible', async () => {
+  const hidden = await page.evaluate(async () => {
+    const ui = await import('./js/ui.js');
+    ui.showToast('One');
+    ui.hideToast();
+    ui.showToast('Two');
+    await new Promise((r) => setTimeout(r, 300));
+    const t = document.getElementById('toast');
+    const res = t.hidden;
+    ui.hideToast();
+    return res;
+  });
+  assert.equal(hidden, false);
+});
+
 await step('notes: autosave and restore', async () => {
   await openSection(page, 'Notes');
   const area = page.locator('.note-area');
