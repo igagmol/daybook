@@ -1,6 +1,7 @@
 // Local storage layer. localStorage is the source of truth for instant use.
 // Every key is prefixed with "daybook:v1:" because all GitHub Pages projects share one origin.
 import { emptyData, normalize, live, COLLECTIONS } from './merge.js';
+import { migrateRecipes } from './logic.js';
 
 export const PREFIX = 'daybook:v1:';
 export const LOCAL_NS = 'local';
@@ -59,6 +60,7 @@ export function uuid() {
 export function open(namespace) {
   ns = namespace;
   data = normalize(readJSON(key(ns, 'data')));
+  if (migrateRecipes(data, stamp)) persist('local');
   emit('open');
 }
 
@@ -114,6 +116,21 @@ export function add(collection, fields) {
   return item;
 }
 
+/** Create or revive an item with a fixed id (used for the ingredient catalog). */
+export function put(collection, id, fields) {
+  const item = data[collection].find((it) => it.id === id);
+  if (item && !item.deletedAt) return item;
+  const t = stamp();
+  if (item) {
+    delete item.deletedAt;
+    Object.assign(item, fields, { updatedAt: t });
+  } else {
+    data[collection].push({ id, createdAt: t, updatedAt: t, ...fields });
+  }
+  persist('local');
+  return find(collection, id);
+}
+
 export function update(collection, id, fields) {
   const item = data[collection].find((it) => it.id === id);
   if (!item) return null;
@@ -143,6 +160,7 @@ export function setNote(text) {
 
 /** Replace everything with merged data. `source` is "sync" or "local" (import). */
 export function replaceData(next, source = 'sync') {
-  data = normalize(next);
-  persist(source);
+  data = normalize(structuredClone(next));
+  // Recipes in the old notes format can arrive from another device: migrate and upload them.
+  persist(migrateRecipes(data, stamp) ? 'local' : source);
 }

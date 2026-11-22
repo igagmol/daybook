@@ -5,6 +5,7 @@ import * as sync from './sync.js';
 import * as auth from './auth.js';
 import { mergeData } from './merge.js';
 import { todayStr } from './dates.js';
+import { eventAlert, pastEventIds } from './logic.js';
 import { el, icon, googleG, watchViewport, closeAllSheets, closeOpenRow, confirmSheet, showToast, hideToast } from './ui.js';
 import { createShopping } from './sections/shopping.js';
 import { createMeals } from './sections/meals.js';
@@ -37,7 +38,11 @@ function buildHome() {
   const grid = el('nav', { class: 'tiles', 'aria-label': 'Sections' },
     TILES.map(([id, label, ic], i) =>
       el('button', { type: 'button', class: `tile tile-${i + 1}`, onclick: () => openPanel(id) },
-        [el('span', { class: 'tile-icon' }, [icon(ic, 56)]), el('span', { class: 'tile-label', text: label })])));
+        [
+          el('span', { class: 'tile-icon' }, [icon(ic, 56)]),
+          el('span', { class: 'tile-label', text: label }),
+          id === 'events' ? el('span', { class: 'tile-dot', id: 'events-dot', hidden: true, 'aria-hidden': 'true' }) : null,
+        ])));
   const bar = el('div', { class: 'home-bar' }, [
     el('button', { type: 'button', class: 'icon-btn account-btn', 'aria-label': 'Account', onclick: openAccount }, [icon('user', 26)]),
   ]);
@@ -95,6 +100,31 @@ function closePanel() {
 
 function renderAll() {
   for (const s of sections) s.render();
+  renderEventDot();
+}
+
+/** Red dot on the Events tile for an event today, yellow for tomorrow or the day after. */
+function renderEventDot() {
+  const dot = document.getElementById('events-dot');
+  if (!dot) return;
+  const level = eventAlert(store.list('events'), today);
+  dot.hidden = !level;
+  dot.className = `tile-dot${level ? ` tile-dot-${level}` : ''}`;
+  const tile = dot.closest('.tile');
+  const note = level === 'red' ? ', event today' : level === 'yellow' ? ', event soon' : '';
+  tile.setAttribute('aria-label', `Events${note}`);
+}
+
+/** Events whose day has passed are deleted automatically. */
+function purgePastEvents() {
+  const ids = pastEventIds(store.list('events'), today);
+  if (ids.length) store.remove('events', ids);
+}
+
+/** Pick up a new day (app left open past midnight, or reopened). */
+function checkDay() {
+  const t = todayStr();
+  if (t !== today) { today = t; purgePastEvents(); renderAll(); }
 }
 
 /* ---------- Sign-in screen ---------- */
@@ -142,6 +172,7 @@ function completeSignIn(profile) {
   }
   sync.init();
   showSignIn(false);
+  purgePastEvents();
   renderAll();
   sync.syncNow();
 }
@@ -242,6 +273,8 @@ function boot() {
   app.replaceChildren(buildSignIn(), shell);
 
   store.onChange((source) => {
+    // Events from another device may already be in the past.
+    if (source === 'sync' && pastEventIds(store.list('events'), today).length) { purgePastEvents(); return; }
     renderAll();
     if (source === 'local') sync.scheduleSync();
   });
@@ -260,7 +293,9 @@ function boot() {
       showSignIn(true);
     }
   }
+  purgePastEvents();
   renderAll();
+  setInterval(checkDay, 60_000);
 
   // Everything below runs after the first paint.
   requestAnimationFrame(() => setTimeout(() => afterPaint(redirected), 0));
@@ -289,8 +324,7 @@ async function afterPaint(redirected) {
 
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible') return;
-  const t = todayStr();
-  if (t !== today) { today = t; renderAll(); }
+  checkDay();
   if (auth.authEnabled() && auth.getAccount()) sync.syncNow();
 });
 
