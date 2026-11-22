@@ -230,14 +230,21 @@ export function staleSleepIds(list, now) {
 }
 
 /**
- * Finished sleeps by the local day you woke up: Map "YYYY-MM-DD" -> { start, end }.
- * Bedtime the evening before still counts for the wake-up day. Longest sleep wins.
+ * The night a sleep belongs to: the day the bedtime evening started.
+ * A bedtime after midnight but before noon (e.g. 01:30) still belongs to the previous day's night.
  */
+export function nightOf(start) {
+  const d = new Date(start);
+  const day = toDateStr(d);
+  return d.getHours() < 12 ? addDays(day, -1) : day;
+}
+
+/** Finished sleeps by night: Map "YYYY-MM-DD" -> { start, end }. Longest sleep of the night wins. */
 export function sleepByDay(list) {
   const map = new Map();
   for (const s of list) {
     if (!s.end || s.end - s.start < SLEEP_MIN_MS) continue;
-    const day = toDateStr(new Date(s.end));
+    const day = nightOf(s.start);
     const cur = map.get(day);
     if (!cur || s.end - s.start > cur.end - cur.start) map.set(day, { start: s.start, end: s.end });
   }

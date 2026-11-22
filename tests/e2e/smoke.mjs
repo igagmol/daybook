@@ -622,14 +622,24 @@ await step('habits sleep: one button logs bedtime then wake-up; an accidental do
   await btn.click();
   assert.equal(await btn.textContent(), 'Going to sleep');
   assert.equal(await p.locator('.sleep-info').textContent(), 'Last night 23:40 → 07:15 · 7h 35m');
-  assert.equal(await p.locator('.daily-day.today .sleep-dot').count(), 1);
+  assert.equal(await p.locator('.daily-day .sleep-dot').count(), 1);
+  assert.equal(await p.getByRole('gridcell', { name: /^Sunday 22 November, slept 23:40 to 07:15$/ }).locator('.sleep-dot').count(), 1);
   await p4.clock.runFor(4000); await p4.waitForTimeout(400);
   await shot(p4, '26-habits-sleep');
+  await p.getByRole('gridcell', { name: /^Today/ }).click();
+  assert.equal(await p.locator('.sleep-info').textContent(), 'Tonight: no sleep logged');
+  // Going to bed after midnight still counts for the night of the day that ended.
+  await p4.clock.runFor(17 * 3600_000 + 15 * 60_000); // Tue 24, 00:30
+  await btn.click();
+  await p4.clock.runFor(7 * 3600_000); // 07:30
+  await btn.click();
+  assert.equal(await p.locator('.sleep-info').textContent(), 'Last night 00:30 → 07:30 · 7h 00m');
+  assert.equal(await p.getByRole('gridcell', { name: /^Monday 23 November, slept 00:30 to 07:30$/ }).count(), 1);
   await p.getByRole('gridcell', { name: /^Sunday 22 November/ }).click();
-  assert.equal(await p.locator('.sleep-info').textContent(), 'Sunday 22 November: no sleep logged');
+  assert.equal(await p.locator('.sleep-info').textContent(), 'Night of Sunday 22 November 23:40 → 07:15 · 7h 35m');
   await p4.reload(); await p4.waitForSelector('.tile');
   await openSection(p4, 'Habits');
-  assert.equal(await p.locator('.sleep-info').textContent(), 'Last night 23:40 → 07:15 · 7h 35m');
+  assert.equal(await p.locator('.sleep-info').textContent(), 'Last night 00:30 → 07:30 · 7h 00m');
   await c4.close();
 });
 
