@@ -30,6 +30,9 @@
   --green-3: #1FD65F;
   --green-fg: #1E5C34;
   --green-full: #5ACF7E;
+  /* Sleep line and button (Habits) */
+  --sleep-bg: #E4E3F7;
+  --sleep-fg: #4B47A0;
 
   /* Google branding (Sign in with Google button only) */
   --gsi-bg: #FFFFFF;
@@ -376,7 +379,7 @@ ul { margin: 0; padding: 0; list-style: none; }
 
 .panel-daily .panel-body { display: flex; flex-direction: column; gap: 10px; padding-bottom: calc(var(--safe-b) + 16px); }
 .daily-month { flex: none; }
-.daily-day { min-height: 44px; gap: 1px; background: var(--white); }
+.daily-day { min-height: 40px; gap: 1px; background: var(--white); }
 .daily-day.out { visibility: hidden; }
 .daily-day .day-num { font-size: 13px; line-height: 1; }
 .daily-day:has(.mark) .day-num { font-size: 11px; color: var(--blue-700); }
@@ -407,9 +410,9 @@ ul { margin: 0; padding: 0; list-style: none; }
 }
 .streak-on { background: var(--green-1); color: var(--green-fg); }
 
-.daily-action { flex: 1; min-height: 150px; display: flex; flex-direction: column; gap: 6px; }
+.daily-action { flex: 1; min-height: 160px; display: flex; flex-direction: column; gap: 6px; }
 .done-btn {
-  flex: 1; min-height: 130px; width: 100%;
+  flex: 1; min-height: 100px; width: 100%;
   border-radius: 28px;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
   background: var(--blue-700); color: var(--white);
@@ -421,7 +424,7 @@ ul { margin: 0; padding: 0; list-style: none; }
 .done-btn:disabled:active { transform: none; }
 .done-text { font-size: 30px; font-weight: 800; letter-spacing: 0.01em; }
 .done-icon { display: flex; }
-.done-icon svg { stroke-width: 2.4; }
+.done-icon svg { stroke-width: 2.4; width: clamp(28px, 5vh, 44px); height: clamp(28px, 5vh, 44px); }
 .done-full { background: var(--green-full); color: var(--white); }
 .done-1 { background: var(--green-1); color: var(--green-fg); }
 .done-2 { background: var(--green-2); color: var(--white); }
@@ -429,6 +432,28 @@ ul { margin: 0; padding: 0; list-style: none; }
 .done-pips { display: flex; gap: 8px; }
 .pip { width: 12px; height: 12px; border-radius: 999px; background: currentColor; opacity: 0.3; }
 .pip.on { opacity: 1; }
+.daily-info { flex: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.sleep-info {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 999px;
+  font-size: 14px; font-weight: 600; color: var(--blue-700);
+  background: var(--blue-100);
+  font-variant-numeric: tabular-nums;
+}
+.sleep-on { background: var(--sleep-bg); color: var(--sleep-fg); }
+.daily-day.selected { box-shadow: inset 0 0 0 2px var(--sleep-fg); }
+.sleep-dot { position: absolute; top: 5px; right: 6px; width: 5px; height: 5px; border-radius: 999px; background: var(--sleep-fg); }
+.daily-day { position: relative; }
+.daily-row { flex: none; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.sleep-btn {
+  flex: 1; min-height: 48px; padding: 0 16px; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font-size: 16px; font-weight: 600;
+  background: var(--sleep-bg); color: var(--sleep-fg);
+  transition: transform var(--dur) var(--ease), background-color var(--dur) var(--ease);
+}
+.sleep-btn:active { transform: scale(0.97); }
+.sleep-btn.asleep { background: var(--sleep-fg); color: var(--white); }
 .undo-btn {
   flex: none; align-self: center;
   min-height: 36px; padding: 0 16px; border-radius: 999px;

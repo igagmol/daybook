@@ -594,6 +594,45 @@ await step('language and habits reset at local midnight', async () => {
   await c3.close();
 });
 
+await step('habits sleep: one button logs bedtime then wake-up; an accidental double press cancels', async () => {
+  const { ctx: c4, page: p4 } = await newPage();
+  await c4.route('**/config.js', async (route) => {
+    const body = (await readFile(join(ROOT, 'config.js'), 'utf8')).replace(/GOOGLE_CLIENT_ID = "[^"]*"/, 'GOOGLE_CLIENT_ID = ""');
+    await route.fulfill({ body, contentType: 'text/javascript' });
+  });
+  await p4.clock.install({ time: new Date(2026, 10, 22, 16, 0, 0) });
+  await p4.goto(BASE); await p4.waitForSelector('.tile');
+  await openSection(p4, 'Habits');
+  const p = p4.locator('#p-habits');
+  const btn = p.locator('.sleep-btn');
+  assert.equal(await btn.textContent(), 'Going to sleep');
+  await btn.click();
+  assert.equal(await btn.textContent(), 'Wake up · asleep since 16:00');
+  await p4.clock.runFor(60_000);
+  await btn.click(); // pressed by mistake: second press cancels
+  assert.equal(await btn.textContent(), 'Going to sleep');
+  assert.equal(await p4.evaluate(() => JSON.parse(localStorage.getItem('daybook:v1:local:data')).sleep.filter((s) => !s.deletedAt).length), 0);
+  await p4.clock.runFor(7 * 3600_000 - 60_000 + 40 * 60_000); // 23:40
+  await btn.click();
+  await back(p4);
+  await p4.clock.runFor(7.5 * 3600_000 + 5 * 60_000); // 07:15 next day
+  await openSection(p4, 'Habits');
+  assert.equal(await btn.textContent(), 'Wake up · asleep since 23:40');
+  await shot(p4, '25-habits-asleep');
+  await btn.click();
+  assert.equal(await btn.textContent(), 'Going to sleep');
+  assert.equal(await p.locator('.sleep-info').textContent(), 'Last night 23:40 → 07:15 · 7h 35m');
+  assert.equal(await p.locator('.daily-day.today .sleep-dot').count(), 1);
+  await p4.clock.runFor(4000); await p4.waitForTimeout(400);
+  await shot(p4, '26-habits-sleep');
+  await p.getByRole('gridcell', { name: /^Sunday 22 November/ }).click();
+  assert.equal(await p.locator('.sleep-info').textContent(), 'Sunday 22 November: no sleep logged');
+  await p4.reload(); await p4.waitForSelector('.tile');
+  await openSection(p4, 'Habits');
+  assert.equal(await p.locator('.sleep-info').textContent(), 'Last night 23:40 → 07:15 · 7h 35m');
+  await c4.close();
+});
+
 await browser.close();
 server.close();
 const failed = results.filter((r) => r[0] === 'FAIL');

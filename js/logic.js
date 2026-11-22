@@ -1,5 +1,5 @@
 // Pure list logic used by the sections. Unit tested.
-import { addDays } from './dates.js';
+import { addDays, toDateStr } from './dates.js';
 
 /** Priority ascending (1 first), then due date ascending, then creation time. */
 export function sortTasks(tasks) {
@@ -209,4 +209,51 @@ export function currentStreak(counts, today) {
   let n = 0;
   while (counts.get(day)) { n++; day = addDays(day, -1); }
   return n;
+}
+
+/* ---------- Sleep (Habits) ---------- */
+
+/** A sleep shorter than this is treated as an accidental double press and is not saved. */
+export const SLEEP_MIN_MS = 30 * 60 * 1000;
+/** A bedtime with no wake-up after this long is treated as forgotten and ignored. */
+export const SLEEP_MAX_MS = 18 * 60 * 60 * 1000;
+
+/** The sleep in progress (bedtime recorded, no wake-up yet), or null. */
+export function openSleep(list, now) {
+  const open = list.filter((s) => !s.end && now - s.start < SLEEP_MAX_MS);
+  return open.sort((a, b) => b.start - a.start)[0] || null;
+}
+
+/** Stale bedtimes with no wake-up (forgotten): cleaned up on the next press. */
+export function staleSleepIds(list, now) {
+  return list.filter((s) => !s.end && now - s.start >= SLEEP_MAX_MS).map((s) => s.id);
+}
+
+/**
+ * Finished sleeps by the local day you woke up: Map "YYYY-MM-DD" -> { start, end }.
+ * Bedtime the evening before still counts for the wake-up day. Longest sleep wins.
+ */
+export function sleepByDay(list) {
+  const map = new Map();
+  for (const s of list) {
+    if (!s.end || s.end - s.start < SLEEP_MIN_MS) continue;
+    const day = toDateStr(new Date(s.end));
+    const cur = map.get(day);
+    if (!cur || s.end - s.start > cur.end - cur.start) map.set(day, { start: s.start, end: s.end });
+  }
+  return map;
+}
+
+const pad2 = (n) => String(n).padStart(2, '0');
+
+/** "23:40" in local time. */
+export function clockTime(ms) {
+  const d = new Date(ms);
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+/** "7h 35m" */
+export function formatDuration(ms) {
+  const m = Math.round(ms / 60000);
+  return `${Math.floor(m / 60)}h ${pad2(m % 60)}m`;
 }
