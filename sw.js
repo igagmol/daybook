@@ -1,6 +1,6 @@
 // Daybook service worker. Cache-first for same-origin GET requests.
 // VERSION is updated by scripts/bump-version.mjs together with config.js.
-const VERSION = '1.4.4';
+const VERSION = '1.5.0';
 const CACHE = `daybook-v${VERSION}`;
 
 const FILES = [
@@ -31,9 +31,12 @@ const FILES = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(FILES.map((f) => new Request(f, { cache: 'reload' })))),
-  );
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    await cache.addAll(FILES.map((f) => new Request(f, { cache: 'reload' })));
+    // Take over straight away: the open app reloads itself, no "Reload" tap needed.
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', (event) => {
