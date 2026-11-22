@@ -3,10 +3,10 @@
 // "Today" is the device's local date, so the button resets at local midnight.
 import * as store from '../store.js';
 import { el, icon, showToast, hideToast } from '../ui.js';
-import { monthGrid, monthTitle, WEEKDAY_HEADERS, parseDate, dayNumber, formatLong } from '../dates.js';
+import { monthGrid, monthTitle, WEEKDAY_HEADERS, parseDate, dayNumber, formatLong, addDays } from '../dates.js';
 import {
   checkinId, checkinCounts, currentStreak,
-  SLEEP_MIN_MS, openSleep, staleSleepIds, sleepByDay, clockTime, formatDuration,
+  SLEEP_MIN_MS, openSleep, staleSleepIds, sleepByDay, nightOf, clockTime, formatDuration,
 } from '../logic.js';
 
 /** Today's count for one section (0 when not done). */
@@ -56,7 +56,7 @@ export function createDaily(ctx, { id, title, max, sleep = false }) {
       return;
     }
     store.update('sleep', open.id, { end: now });
-    selected = ctx.today();
+    selected = nightOf(open.start);
     toast(`Slept ${formatDuration(now - open.start)}`);
   }
 
@@ -99,11 +99,11 @@ export function createDaily(ctx, { id, title, max, sleep = false }) {
     const today = ctx.today();
     const t = parseDate(today);
     // A new day (or first render) brings the calendar back to the current month.
-    if (!ym || shownToday !== today) { ym = { y: t.getFullYear(), m: t.getMonth() }; shownToday = today; selected = today; }
+    if (!ym || shownToday !== today) { ym = { y: t.getFullYear(), m: t.getMonth() }; shownToday = today; selected = addDays(today, -1); }
     const isCurrent = ym.y === t.getFullYear() && ym.m === t.getMonth();
     const counts = checkinCounts(store.list('checkins'), id);
     const sleeps = sleep ? sleepByDay(store.list('sleep')) : null;
-    if (!selected || selected > today) selected = today;
+    if (!selected || selected > today) selected = addDays(today, -1);
 
     monthEl.replaceChildren(
       el('div', { class: 'month-head' }, [
@@ -162,7 +162,8 @@ export function createDaily(ctx, { id, title, max, sleep = false }) {
 
   function renderSleep(today, sleeps) {
     const s = sleeps.get(selected);
-    const when = selected === today ? 'Last night' : formatLong(selected, today);
+    const when = selected === addDays(today, -1) ? 'Last night'
+      : selected === today ? 'Tonight' : `Night of ${formatLong(selected, today)}`;
     sleepInfo.replaceChildren(icon('moon', 16), el('span', {
       text: s ? `${when} ${clockTime(s.start)} → ${clockTime(s.end)} · ${formatDuration(s.end - s.start)}` : `${when}: no sleep logged`,
     }));
