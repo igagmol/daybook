@@ -76,11 +76,11 @@ currentPage = page;
 await page.goto(BASE);
 await page.waitForSelector('.tile');
 
-await step('home: six tiles fill the screen, no overflow', async () => {
+await step('home: eight tiles fill the screen, no overflow', async () => {
   await shot(page, '01-home');
   const vp = page.viewportSize();
   const tiles = await page.locator('.tile').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON()));
-  assert.equal(tiles.length, 6);
+  assert.equal(tiles.length, 8);
   const bottom = Math.max(...tiles.map((t) => t.bottom));
   const top = Math.min(...tiles.map((t) => t.top));
   assert.ok(top >= 0 && top < 80, `top ${top}`);
@@ -88,7 +88,66 @@ await step('home: six tiles fill the screen, no overflow', async () => {
   const sw = await page.evaluate(() => document.documentElement.scrollWidth);
   assert.ok(sw <= vp.width, 'no horizontal overflow');
   const labels = await page.locator('.tile-label').allTextContents();
-  assert.deepEqual(labels, ['Shopping', 'Meals', 'Money', 'Events', 'Tasks', 'Notes']);
+  assert.deepEqual(labels, ['Shopping', 'Meals', 'Tasks', 'Events', 'Language', 'Habits', 'Money', 'Notes']);
+});
+
+const tileLevel = (page, id) => page.locator(`.tile-${id}`).getAttribute('data-level');
+
+await step('language: grey tile, big Done turns it green, calendar tick, streak, undo', async () => {
+  assert.equal(await tileLevel(page, 'language'), '0');
+  const y1 = await isoIn(page, -1);
+  const y2 = await isoIn(page, -2);
+  await page.evaluate(([y1, y2]) => {
+    const k = 'daybook:v1:local:data';
+    const d = JSON.parse(localStorage.getItem(k) || '{"version":1}');
+    d.checkins = [y1, y2].map((date, i) => ({ id: `language:${date}`, kind: 'language', date, count: 1, createdAt: i + 1, updatedAt: i + 1 }));
+    localStorage.setItem(k, JSON.stringify(d));
+  }, [y1, y2]);
+  await page.reload(); await page.waitForSelector('.tile');
+  await openSection(page, 'Language');
+  const p = page.locator('#p-language');
+  assert.match(await p.locator('.streak').textContent(), /^2-day streak · keep it going today$/);
+  assert.ok(await p.getByRole('button', { name: 'Next month' }).isDisabled());
+  await shot(page, '20-language-before');
+  await p.locator('.done-btn').click();
+  assert.equal(await p.locator('.streak').textContent(), '3-day streak');
+  assert.ok(await p.locator('.done-btn').isDisabled());
+  assert.equal(await p.locator('.daily-day.today .mark').count(), 1);
+  await shot(page, '21-language-done');
+  await p.getByRole('button', { name: 'Previous month' }).click();
+  assert.ok(await p.getByRole('button', { name: 'Next month' }).isEnabled());
+  await p.getByRole('button', { name: 'Next month' }).click();
+  await back(page);
+  assert.equal(await tileLevel(page, 'language'), 'full');
+  await page.reload(); await page.waitForSelector('.tile');
+  assert.equal(await tileLevel(page, 'language'), 'full');
+  await openSection(page, 'Language');
+  await p.getByRole('button', { name: 'Undo' }).click();
+  assert.equal(await p.locator('.daily-day.today .mark').count(), 0);
+  await back(page);
+  assert.equal(await tileLevel(page, 'language'), '0');
+});
+
+await step('habits: up to 3 presses, three green shades on tile and calendar', async () => {
+  await openSection(page, 'Habits');
+  const p = page.locator('#p-habits');
+  assert.equal(await p.locator('.streak').textContent(), 'Start your streak today');
+  for (const n of [1, 2, 3]) {
+    await p.locator('.done-btn').click();
+    assert.equal(await p.locator('.daily-day.today .mark-num').textContent(), String(n));
+    assert.equal(await p.locator('.daily-day.today .mark').getAttribute('class'), `mark mark-${n}`);
+    await back(page);
+    assert.equal(await tileLevel(page, 'habits'), String(n));
+    if (n === 2) await shot(page, '22-home-habits-2');
+    await openSection(page, 'Habits');
+  }
+  assert.ok(await p.locator('.done-btn').isDisabled());
+  await p.locator('.done-btn').click({ force: true });
+  assert.equal(await p.locator('.daily-day.today .mark-num').textContent(), '3');
+  assert.equal(await p.locator('.streak').textContent(), '1-day streak');
+  await shot(page, '23-habits-3');
+  await back(page);
+  await shot(page, '24-home-daily');
 });
 
 await step('shopping: add several, swipe-delete, clear all, persistence', async () => {
@@ -225,8 +284,8 @@ await step('money: add both directions, colours, swipe-delete, persistence', asy
 await step('events: month grid (Mon first), add from day sheet, dot, list view, swipe-delete', async () => {
   await openSection(page, 'Events');
   assert.equal(await page.locator('.wd').first().textContent(), 'Mon');
-  assert.equal(await page.locator('.day.today').count(), 1);
-  await page.locator('.day.today').click();
+  assert.equal(await page.locator('#p-events .day.today').count(), 1);
+  await page.locator('#p-events .day.today').click();
   await page.waitForTimeout(250);
   await page.locator('.sheet').getByRole('button', { name: 'Add event' }).click();
   await page.waitForTimeout(250);
@@ -237,7 +296,7 @@ await step('events: month grid (Mon first), add from day sheet, dot, list view, 
   await page.waitForTimeout(300);
   assert.deepEqual(await page.locator('.sheet .row-text').allTextContents(), ['Dentist']);
   await tapBackdrop(page);
-  assert.equal(await page.locator('.day.today .dot').count(), 1);
+  assert.equal(await page.locator('#p-events .day.today .dot').count(), 1);
   // add from bottom + with a later date
   await page.getByRole('button', { name: 'Add event', exact: true }).last().click();
   await page.waitForTimeout(250);
@@ -508,6 +567,31 @@ await step('signed-in: remembered account opens instantly offline; namespaces ar
   assert.ok(await p2.locator('.sheet').getByRole('button', { name: 'Reconnect' }).isVisible());
   await shot(p2, '16-account-signed-in');
   await c2.close();
+});
+
+await step('language and habits reset at local midnight', async () => {
+  const { ctx: c3, page: p3 } = await newPage();
+  await c3.route('**/config.js', async (route) => {
+    const body = (await readFile(join(ROOT, 'config.js'), 'utf8')).replace(/GOOGLE_CLIENT_ID = "[^"]*"/, 'GOOGLE_CLIENT_ID = ""');
+    await route.fulfill({ body, contentType: 'text/javascript' });
+  });
+  await p3.clock.install({ time: new Date(2026, 10, 22, 23, 59, 0) });
+  await p3.goto(BASE); await p3.waitForSelector('.tile');
+  await openSection(p3, 'Habits');
+  await p3.locator('#p-habits .done-btn').click();
+  await back(p3);
+  await openSection(p3, 'Language');
+  await p3.locator('#p-language .done-btn').click();
+  await back(p3);
+  assert.equal(await tileLevel(p3, 'habits'), '1');
+  assert.equal(await tileLevel(p3, 'language'), 'full');
+  await p3.clock.runFor(2 * 60_000);
+  assert.equal(await tileLevel(p3, 'habits'), '0');
+  assert.equal(await tileLevel(p3, 'language'), '0');
+  await openSection(p3, 'Language');
+  assert.ok(await p3.locator('#p-language .done-btn').isEnabled());
+  assert.equal(await p3.locator('#p-language .streak').textContent(), '1-day streak · keep it going today');
+  await c3.close();
 });
 
 await browser.close();

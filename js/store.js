@@ -131,6 +131,20 @@ export function put(collection, id, fields) {
   return find(collection, id);
 }
 
+/** Create (or revive) an item with a fixed id, or update it. One change, one sync. */
+export function upsert(collection, id, fields) {
+  const t = stamp();
+  const item = data[collection].find((it) => it.id === id);
+  if (item) {
+    delete item.deletedAt;
+    Object.assign(item, fields, { updatedAt: t });
+  } else {
+    data[collection].push({ id, createdAt: t, updatedAt: t, ...fields });
+  }
+  persist('local');
+  return find(collection, id);
+}
+
 export function update(collection, id, fields) {
   const item = data[collection].find((it) => it.id === id);
   if (!item) return null;

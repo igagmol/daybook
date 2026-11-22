@@ -139,6 +139,16 @@ En la pantalla principal, el botón **Events** muestra:
 - un **punto amarillo** si hay un evento **mañana o pasado mañana**;
 - nada en otro caso. El rojo tiene prioridad. Si borras el evento, el punto se actualiza al momento.
 
+### Language y Habits (versión 1.3.0)
+La pantalla principal tiene ahora 8 botones: Shopping, Meals, Tasks, Events, **Language**, **Habits**, Money y Notes.
+
+- **Language** (cara hablando): pulsa el botón grande **Done** cuando hayas practicado. El botón de la pantalla principal pasa de **gris** a **verde**.
+- **Habits** (cara sonriente): el botón **Done** se puede pulsar **hasta 3 veces al día**. El botón de la pantalla principal va de gris a **verde claro** (1), **verde más intenso** (2) y **verde brillante** (3).
+- Arriba hay un **calendario del mes**; con las flechas ves los meses anteriores. Los días hechos llevan un círculo verde con un ✓ (en Habits, del tono que toque y con un número pequeño 1, 2 o 3).
+- Debajo del calendario está tu **racha**: días seguidos con al menos una vez hecho. Si hoy aún no lo has hecho, la racha no se rompe hasta que acabe el día ("keep it going today").
+- Si te equivocas, **Undo** quita la última pulsación de hoy.
+- Todo vuelve a gris a las **00:00** (hora del teléfono). Se guarda y se sincroniza con Drive como el resto.
+
 ## 7. Inicio de sesión dentro de la app del iPhone (lo que he averiguado)
 
 - La app usa primero la ventana emergente oficial de Google (Google Identity Services).
