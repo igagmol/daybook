@@ -149,8 +149,15 @@ La pantalla principal tiene ahora 8 botones: Shopping, Meals, Tasks, Events, **L
 - Si te equivocas, **Undo** quita la última pulsación de hoy.
 - Todo vuelve a gris a las **00:00** (hora del teléfono). Se guarda y se sincroniza con Drive como el resto.
 
-### Vuelta a la versión 1.3.0 (versión 1.5.0)
-- En el iPhone dejó de salir el teclado. La app vuelve al código de la 1.3.0 (antes del botón de dormir). Los datos de sueño ya guardados se conservan y se siguen sincronizando, pero el botón no se muestra.
+### Sueño en Habits (versión 1.4.1)
+- Debajo del botón **Done** de Habits hay un botón **Going to sleep**. Púlsalo al irte a dormir: queda registrada la hora y el botón cambia a **Wake up · asleep since 23:40**.
+- Al despertarte, púlsalo otra vez: se guarda la hora de despertar.
+- **Pulsación por error:** si lo vuelves a pulsar antes de que pasen **30 minutos**, se cancela y no cuenta nada (sale "Bedtime cancelled"). Por eso no se registran siestas de menos de media hora.
+- Si se te olvida pulsar al despertar, a las 18 horas ese "dormir" se descarta solo.
+- El sueño cuenta para **la noche del día que acaba**: si te acuestas el 22 a las 23:40, o el 23 a la 1:30 de la madrugada (cualquier hora antes de las 12:00), aparece en el **día 22**, de la hora de acostarte a la de despertarte. Los días con sueño tienen un **punto morado** en el calendario. Toca un día para ver debajo "23:40 → 07:15 · 7h 35m". Por defecto muestra "Last night" (la noche de ayer).
+
+### Sueño otra vez en Habits (versión 1.5.1)
+- Vuelve el botón **Going to sleep / Wake up** de Habits, igual que en la 1.4.1. El teclado dejó de salir por un fallo del iPhone, que se arregló reiniciándolo.
 - Las actualizaciones se aplican solas: al abrir la app, si hay versión nueva, se recarga sola en unos segundos.
 
 ## 7. Inicio de sesión dentro de la app del iPhone (lo que he averiguado)

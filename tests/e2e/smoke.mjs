@@ -481,6 +481,48 @@ await step('tasks: sorting, overdue colour, completion removes forever', async (
   await back(page);
 });
 
+await step('keyboard: a closing sheet never takes focus from the next one', async () => {
+  // Meals: picker → New recipe. The picker closes while the recipe form opens.
+  await openSection(page, 'Meals');
+  await page.getByRole('button', { name: 'Add to Lunch' }).click();
+  await page.waitForTimeout(260);
+  await page.getByRole('button', { name: 'New recipe' }).click();
+  await page.waitForTimeout(400);
+  assert.equal(await page.evaluate(() => document.activeElement.closest('.sheet') && document.activeElement.tagName), 'INPUT', 'recipe name keeps focus');
+  await closeTopSheet(page);
+  await back(page);
+  // Tasks: add one, then tap + again straight away.
+  await openSection(page, 'Tasks');
+  await page.getByRole('button', { name: 'Add task' }).click();
+  await page.locator('.sheet').last().locator('input[type=text]').fill('Quick one');
+  await page.locator('.sheet').last().getByRole('button', { name: 'Add' }).click();
+  await page.waitForTimeout(50);
+  await page.getByRole('button', { name: 'Add task' }).click();
+  await page.waitForTimeout(400);
+  const active = await page.evaluate(() => ({ tag: document.activeElement.tagName, inSheet: Boolean(document.activeElement.closest('.sheet-layer.open')) }));
+  assert.deepEqual(active, { tag: 'INPUT', inSheet: true }, 'new task field keeps focus');
+  await page.locator('.sheet-layer.open .sheet').last().locator('input[type=text]').fill('Second');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(260);
+  assert.ok((await page.locator('#p-tasks .row-text').allTextContents()).includes('Second'));
+  await back(page);
+});
+
+await step('toast: shown again right after hiding stays visible', async () => {
+  const hidden = await page.evaluate(async () => {
+    const ui = await import('./js/ui.js');
+    ui.showToast('One');
+    ui.hideToast();
+    ui.showToast('Two');
+    await new Promise((r) => setTimeout(r, 300));
+    const t = document.getElementById('toast');
+    const res = t.hidden;
+    ui.hideToast();
+    return res;
+  });
+  assert.equal(hidden, false);
+});
+
 await step('notes: autosave and restore', async () => {
   await openSection(page, 'Notes');
   const area = page.locator('.note-area');
@@ -592,6 +634,55 @@ await step('language and habits reset at local midnight', async () => {
   assert.ok(await p3.locator('#p-language .done-btn').isEnabled());
   assert.equal(await p3.locator('#p-language .streak').textContent(), '1-day streak · keep it going today');
   await c3.close();
+});
+
+await step('habits sleep: one button logs bedtime then wake-up; an accidental double press cancels', async () => {
+  const { ctx: c4, page: p4 } = await newPage();
+  await c4.route('**/config.js', async (route) => {
+    const body = (await readFile(join(ROOT, 'config.js'), 'utf8')).replace(/GOOGLE_CLIENT_ID = "[^"]*"/, 'GOOGLE_CLIENT_ID = ""');
+    await route.fulfill({ body, contentType: 'text/javascript' });
+  });
+  await p4.clock.install({ time: new Date(2026, 10, 22, 16, 0, 0) });
+  await p4.goto(BASE); await p4.waitForSelector('.tile');
+  await openSection(p4, 'Habits');
+  const p = p4.locator('#p-habits');
+  const btn = p.locator('.sleep-btn');
+  assert.equal(await btn.textContent(), 'Going to sleep');
+  await btn.click();
+  assert.equal(await btn.textContent(), 'Wake up · asleep since 16:00');
+  await p4.clock.runFor(60_000);
+  await btn.click(); // pressed by mistake: second press cancels
+  assert.equal(await btn.textContent(), 'Going to sleep');
+  assert.equal(await p4.evaluate(() => JSON.parse(localStorage.getItem('daybook:v1:local:data')).sleep.filter((s) => !s.deletedAt).length), 0);
+  await p4.clock.runFor(7 * 3600_000 - 60_000 + 40 * 60_000); // 23:40
+  await btn.click();
+  await back(p4);
+  await p4.clock.runFor(7.5 * 3600_000 + 5 * 60_000); // 07:15 next day
+  await openSection(p4, 'Habits');
+  assert.equal(await btn.textContent(), 'Wake up · asleep since 23:40');
+  await shot(p4, '25-habits-asleep');
+  await btn.click();
+  assert.equal(await btn.textContent(), 'Going to sleep');
+  assert.equal(await p.locator('.sleep-info').textContent(), 'Last night 23:40 → 07:15 · 7h 35m');
+  assert.equal(await p.locator('.daily-day .sleep-dot').count(), 1);
+  assert.equal(await p.getByRole('gridcell', { name: /^Sunday 22 November, slept 23:40 to 07:15$/ }).locator('.sleep-dot').count(), 1);
+  await p4.clock.runFor(4000); await p4.waitForTimeout(400);
+  await shot(p4, '26-habits-sleep');
+  await p.getByRole('gridcell', { name: /^Today/ }).click();
+  assert.equal(await p.locator('.sleep-info').textContent(), 'Tonight: no sleep logged');
+  // Going to bed after midnight still counts for the night of the day that ended.
+  await p4.clock.runFor(17 * 3600_000 + 15 * 60_000); // Tue 24, 00:30
+  await btn.click();
+  await p4.clock.runFor(7 * 3600_000); // 07:30
+  await btn.click();
+  assert.equal(await p.locator('.sleep-info').textContent(), 'Last night 00:30 → 07:30 · 7h 00m');
+  assert.equal(await p.getByRole('gridcell', { name: /^Monday 23 November, slept 00:30 to 07:30$/ }).count(), 1);
+  await p.getByRole('gridcell', { name: /^Sunday 22 November/ }).click();
+  assert.equal(await p.locator('.sleep-info').textContent(), 'Night of Sunday 22 November 23:40 → 07:15 · 7h 35m');
+  await p4.reload(); await p4.waitForSelector('.tile');
+  await openSection(p4, 'Habits');
+  assert.equal(await p.locator('.sleep-info').textContent(), 'Last night 00:30 → 07:30 · 7h 00m');
+  await c4.close();
 });
 
 await browser.close();

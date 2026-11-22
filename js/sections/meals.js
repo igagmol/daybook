@@ -207,16 +207,16 @@ export function createMeals(ctx) {
       })));
       suggest.hidden = !list.length;
     };
-    const addIngredient = (raw) => {
+    const addIngredient = (raw, { refocus = true } = {}) => {
       const n = cleanIngredientName(raw);
-      if (!n) { ingInput.focus(); return; }
+      if (!n) { if (refocus) ingInput.focus(); return; }
       const id = ingredientId(n);
       const known = store.find('ingredients', id);
       if (!ings.some((x) => x.id === id)) ings.push({ id, name: known?.name || n });
       ingInput.value = '';
       drawIngs();
       drawSuggest();
-      ingInput.focus();
+      if (refocus) ingInput.focus();
     };
     ingInput.addEventListener('input', drawSuggest);
     ingInput.addEventListener('keydown', (e) => {
@@ -247,7 +247,7 @@ export function createMeals(ctx) {
       e.preventDefault();
       const n = name.value.trim();
       if (!n) { error.textContent = 'Enter a name.'; name.focus(); return; }
-      if (cleanIngredientName(ingInput.value)) addIngredient(ingInput.value); // typed but not added yet
+      if (cleanIngredientName(ingInput.value)) addIngredient(ingInput.value, { refocus: false }); // typed but not added yet
       // Every ingredient goes into the shared catalog (suggestions for other recipes).
       for (const ing of ings) store.put('ingredients', ing.id, { name: ing.name });
       const fields = { name: n, ingredients: ings };
