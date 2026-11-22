@@ -149,6 +149,13 @@ La pantalla principal tiene ahora 8 botones: Shopping, Meals, Tasks, Events, **L
 - Si te equivocas, **Undo** quita la última pulsación de hoy.
 - Todo vuelve a gris a las **00:00** (hora del teléfono). Se guarda y se sincroniza con Drive como el resto.
 
+### Sueño en Habits (versión 1.4.0)
+- Debajo del botón **Done** de Habits hay un botón **Going to sleep**. Púlsalo al irte a dormir: queda registrada la hora y el botón cambia a **Wake up · asleep since 23:40**.
+- Al despertarte, púlsalo otra vez: se guarda la hora de despertar.
+- **Pulsación por error:** si lo vuelves a pulsar antes de que pasen **30 minutos**, se cancela y no cuenta nada (sale "Bedtime cancelled"). Por eso no se registran siestas de menos de media hora.
+- Si se te olvida pulsar al despertar, a las 18 horas ese "dormir" se descarta solo.
+- El sueño cuenta para **el día en que te despiertas** (te acuestas el 22 a las 23:40 y te levantas el 23 a las 7:15 → aparece el día 23). Los días con sueño tienen un **punto morado** en el calendario. Toca cualquier día para ver debajo "23:40 → 07:15 · 7h 35m". Por defecto muestra "Last night".
+
 ## 7. Inicio de sesión dentro de la app del iPhone (lo que he averiguado)
 
 - La app usa primero la ventana emergente oficial de Google (Google Identity Services).

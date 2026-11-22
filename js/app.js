@@ -37,7 +37,7 @@ const app = document.getElementById('app');
 const sections = [
   createShopping(), createMeals(ctx), createTasks(ctx), createEvents(ctx),
   createDaily(ctx, { id: 'language', title: 'Language', max: DAILY.language }),
-  createDaily(ctx, { id: 'habits', title: 'Habits', max: DAILY.habits }),
+  createDaily(ctx, { id: 'habits', title: 'Habits', max: DAILY.habits, sleep: true }),
   createMoney(), createNotes(),
 ];
 const panels = new Map();
