@@ -481,33 +481,6 @@ await step('tasks: sorting, overdue colour, completion removes forever', async (
   await back(page);
 });
 
-await step('keyboard: every add sheet focuses a field that is on screen, inside the tap', async () => {
-  // iOS only opens the keyboard when the focused field is visible at the moment of the tap.
-  const vp = page.viewportSize();
-  const tapAndMeasure = (selector) => page.evaluate((sel) => {
-    document.querySelector(sel).click();
-    const a = document.activeElement;
-    const r = a.getBoundingClientRect();
-    return { tag: a.tagName, top: r.top, bottom: r.bottom };
-  }, selector);
-  const cases = [
-    ['Shopping', '.panel.open .fab'],
-    ['Tasks', '.panel.open .fab'],
-    ['Events', '.panel.open .fab'],
-    ['Money', '.panel.open .fab'],
-    ['Meals', '.panel.open [aria-label="Add to Lunch"]'],
-  ];
-  for (const [section, sel] of cases) {
-    await openSection(page, section);
-    const m = await tapAndMeasure(sel);
-    assert.equal(m.tag, 'INPUT', `${section}: a field has focus`);
-    assert.ok(m.top >= 0 && m.bottom <= vp.height, `${section}: field on screen when focused (${m.top}..${m.bottom} of ${vp.height})`);
-    await page.waitForTimeout(260);
-    await closeTopSheet(page);
-    await back(page);
-  }
-});
-
 await step('keyboard: a closing sheet never takes focus from the next one', async () => {
   // Meals: picker → New recipe. The picker closes while the recipe form opens.
   await openSection(page, 'Meals');

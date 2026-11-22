@@ -555,12 +555,6 @@ input[type="date"]::-webkit-date-and-time-value, input[type="time"]::-webkit-dat
 .sheet-tall { min-height: min(70dvh, calc(var(--vvh, 100dvh) - var(--safe-t) - 40px)); }
 .sheet-layer.open .sheet-backdrop { opacity: 1; }
 .sheet-layer.open .sheet { transform: translateY(0); }
-/* Sheets that open the keyboard: already in place when the field is focused (iOS). */
-.sheet-layer-input .sheet {
-  transform: translateY(24px); opacity: 0.5; /* never fully transparent: iOS may skip the keyboard */
-  transition: transform var(--dur) var(--ease), opacity var(--dur) var(--ease);
-}
-.sheet-layer-input.open .sheet { transform: translateY(0); opacity: 1; }
 .sheet-head { flex: none; padding: 8px 0 10px; touch-action: none; }
 .sheet-handle { width: 40px; height: 5px; border-radius: 999px; background: var(--blue-300); margin: 0 auto 10px; }
 .sheet-title { font-size: 19px; font-weight: 700; color: var(--blue-900); text-align: center; padding: 0 8px; }

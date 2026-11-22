@@ -151,24 +151,13 @@ export function openSheet({ title, content = [], onClose, focus, label } = {}) {
   enableDragToClose(head, sheet, close);
 
   sheetStack.push(api);
-  const target = typeof focus === 'string' ? sheet.querySelector(focus) : focus;
-  // iOS only opens the keyboard for a field that is on screen when it is focused.
-  // A sheet that focuses a text field rises a few pixels instead of sliding in from below.
-  if (isTextField(target)) layer.classList.add('sheet-layer-input');
   // Force layout so the transition runs, then open.
   void layer.offsetHeight;
   layer.classList.add('open');
+  const target = typeof focus === 'string' ? sheet.querySelector(focus) : focus;
   // Focus synchronously, still inside the tap, so iOS shows the keyboard.
   (target || sheet).focus({ preventScroll: true });
   return api;
-}
-
-/** Fields that bring up the on-screen keyboard. */
-export function isTextField(node) {
-  if (!node) return false;
-  if (node.tagName === 'TEXTAREA') return !node.readOnly;
-  if (node.tagName !== 'INPUT' || node.readOnly || node.disabled) return false;
-  return ['text', 'search', 'email', 'url', 'tel', 'number', 'password'].includes(node.type);
 }
 
 /**
