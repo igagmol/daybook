@@ -9,7 +9,6 @@ import { eventAlert, pastEventIds } from './logic.js';
 import { el, icon, googleG, watchViewport, closeAllSheets, closeOpenRow, confirmSheet, showToast, hideToast } from './ui.js';
 import { createShopping } from './sections/shopping.js';
 import { createMeals } from './sections/meals.js';
-import { createMoney } from './sections/money.js';
 import { createEvents } from './sections/events.js';
 import { createTasks } from './sections/tasks.js';
 import { createNotes } from './sections/notes.js';
@@ -26,7 +25,7 @@ const TILES = [
   ['events', 'Events', 'calendar'],
   ['language', 'Language', 'talk'],
   ['habits', 'Habits', 'smile'],
-  ['money', 'Money', 'dollar'],
+  ['mode', 'Mode', null],
   ['notes', 'Notes', 'pencil'],
 ];
 
@@ -38,7 +37,7 @@ const sections = [
   createShopping(), createMeals(ctx), createTasks(ctx), createEvents(ctx),
   createDaily(ctx, { id: 'language', title: 'Language', max: DAILY.language }),
   createDaily(ctx, { id: 'habits', title: 'Habits', max: DAILY.habits, sleep: true }),
-  createMoney(), createNotes(),
+  createNotes(),
 ];
 const panels = new Map();
 let openPanelId = null;
@@ -47,7 +46,7 @@ let openPanelId = null;
 
 function buildHome() {
   const grid = el('nav', { class: 'tiles', 'aria-label': 'Sections' },
-    TILES.map(([id, label, ic], i) =>
+    TILES.map(([id, label, ic], i) => id === 'mode' ? buildModeTile(i) :
       el('button', { type: 'button', class: `tile tile-${i + 1} tile-${id}`, 'data-id': id, onclick: () => openPanel(id) },
         [
           el('span', { class: 'tile-icon' }, [icon(ic, 56)]),
@@ -58,6 +57,39 @@ function buildHome() {
     el('button', { type: 'button', class: 'icon-btn account-btn', 'aria-label': 'Account', onclick: openAccount }, [icon('user', 26)]),
   ]);
   return el('main', { class: 'home', id: 'home' }, [grid, bar]);
+}
+
+/* ---------- Mode (snail / squirrel) ---------- */
+
+// Looks like a section but opens nothing: a tap switches between the two ways of living.
+const MODES = {
+  snail: { emoji: '🐌', name: 'Snail', hint: 'slow and mindful' },
+  squirrel: { emoji: '🐿️', name: 'Squirrel', hint: 'fast' },
+};
+const readMode = () => (store.readGlobal('mode') === 'squirrel' ? 'squirrel' : 'snail');
+
+function buildModeTile(i) {
+  const emoji = el('span', { class: 'mode-emoji', 'aria-hidden': 'true' });
+  const tile = el('button', { type: 'button', class: `tile tile-${i + 1} tile-mode`, 'data-id': 'mode' }, [
+    el('span', { class: 'tile-icon' }, [emoji]),
+    el('span', { class: 'tile-label', text: 'Mode' }),
+  ]);
+  const paint = (mode) => {
+    const m = MODES[mode];
+    tile.dataset.mode = mode;
+    emoji.textContent = m.emoji;
+    tile.setAttribute('aria-label', `Mode: ${m.name} (${m.hint}). Tap to switch.`);
+  };
+  tile.addEventListener('click', () => {
+    const next = readMode() === 'snail' ? 'squirrel' : 'snail';
+    store.writeGlobal('mode', next);
+    paint(next);
+    emoji.classList.remove('pop');
+    void emoji.offsetWidth; // restart the animation
+    emoji.classList.add('pop');
+  });
+  paint(readMode());
+  return tile;
 }
 
 function buildPanel(sec) {

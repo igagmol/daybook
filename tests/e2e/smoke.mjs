@@ -88,7 +88,7 @@ await step('home: eight tiles fill the screen, no overflow', async () => {
   const sw = await page.evaluate(() => document.documentElement.scrollWidth);
   assert.ok(sw <= vp.width, 'no horizontal overflow');
   const labels = await page.locator('.tile-label').allTextContents();
-  assert.deepEqual(labels, ['Shopping', 'Meals', 'Tasks', 'Events', 'Language', 'Habits', 'Money', 'Notes']);
+  assert.deepEqual(labels, ['Shopping', 'Meals', 'Tasks', 'Events', 'Language', 'Habits', 'Mode', 'Notes']);
 });
 
 const tileLevel = (page, id) => page.locator(`.tile-${id}`).getAttribute('data-level');
@@ -256,8 +256,9 @@ await step('meals: 7 chips, new recipe assigned, swipe removes from day only, ma
   await back(page);
 });
 
-await step('money: add both directions, colours, swipe-delete, persistence', async () => {
-  await openSection(page, 'Money');
+await step('money (tab in Notes): add both directions, colours, swipe-delete, persistence', async () => {
+  await openSection(page, 'Notes');
+  await page.getByRole('tab', { name: 'Money' }).click();
   for (const [amt, concept, dir] of [['12,5', 'Dinner Ana', 'They owe me'], ['30', 'Concert', 'I owe'], ['4.2', 'Coffee', 'I owe']]) {
     await page.getByRole('button', { name: 'Add entry' }).click();
     await page.waitForTimeout(250);
@@ -270,14 +271,16 @@ await step('money: add both directions, colours, swipe-delete, persistence', asy
     await s.getByRole('button', { name: 'Add' }).click();
     await page.waitForTimeout(250);
   }
-  assert.deepEqual(await page.locator('#p-money .money-amount').allTextContents(), ['€12.50', '€30.00', '€4.20']);
-  assert.equal(await page.locator('#p-money .money-owed').count(), 1);
-  assert.equal(await page.locator('#p-money .money-owe').count(), 2);
+  assert.deepEqual(await page.locator('#p-notes .money-amount').allTextContents(), ['€12.50', '€30.00', '€4.20']);
+  assert.equal(await page.locator('#p-notes .money-owed').count(), 1);
+  assert.equal(await page.locator('#p-notes .money-owe').count(), 2);
   await shot(page, '08-money');
-  await swipeLeft(page, page.locator('#p-money .swipe-row').nth(2));
+  await swipeLeft(page, page.locator('#p-notes .swipe-row').nth(2));
   await page.reload(); await page.waitForSelector('.tile');
-  await openSection(page, 'Money');
-  assert.deepEqual(await page.locator('#p-money .row-text').allTextContents(), ['Dinner Ana', 'Concert']);
+  await openSection(page, 'Notes');
+  await page.getByRole('tab', { name: 'Money' }).click();
+  assert.deepEqual(await page.locator('#p-notes .row-text').allTextContents(), ['Dinner Ana', 'Concert']);
+  await page.getByRole('tab', { name: 'Notes' }).click();
   await back(page);
 });
 
@@ -534,6 +537,22 @@ await step('notes: autosave and restore', async () => {
   await openSection(page, 'Notes');
   assert.equal(await page.locator('.note-area').inputValue(), 'Line one\nLine two');
   await back(page);
+});
+
+await step('mode: tile opens nothing, toggles snail/squirrel, persists', async () => {
+  const tile = page.locator('.tile-mode');
+  assert.equal(await tile.getAttribute('data-mode'), 'snail');
+  assert.equal(await tile.locator('.mode-emoji').textContent(), '🐌');
+  await tile.click(); await page.waitForTimeout(350);
+  assert.equal(await page.locator('.panel.open').count(), 0, 'no panel opened');
+  assert.equal(await tile.getAttribute('data-mode'), 'squirrel');
+  assert.equal(await tile.locator('.mode-emoji').textContent(), '🐿️');
+  await shot(page, '14-mode-squirrel');
+  await page.reload(); await page.waitForSelector('.tile');
+  assert.equal(await page.locator('.tile-mode').getAttribute('data-mode'), 'squirrel');
+  await page.locator('.tile-mode').click(); await page.waitForTimeout(350);
+  assert.equal(await page.locator('.tile-mode').getAttribute('data-mode'), 'snail');
+  await shot(page, '15-mode-snail');
 });
 
 await step('account sheet (local profile) and export', async () => {
