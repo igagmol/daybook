@@ -149,6 +149,10 @@ La pantalla principal tiene ahora 8 botones: Shopping, Meals, Tasks, Events, **L
 - Si te equivocas, **Undo** quita la última pulsación de hoy.
 - Todo vuelve a gris a las **00:00** (hora del teléfono). Se guarda y se sincroniza con Drive como el resto.
 
+### Notes con Money dentro, y Mode (versión 1.6.0)
+- **Notes** ahora tiene dos pestañas arriba: **Notes** (tu nota, igual que antes) y **Money** (quién debe a quién, igual que antes). La app recuerda la última pestaña que usaste.
+- Donde estaba Money ahora está **Mode**. No abre nada: cada vez que lo pulsas cambia entre el **caracol 🐌** (modo lento y consciente, fondo naranja pastel) y la **ardilla 🐿️** (modo rápido, fondo marrón claro pastel). El modo elegido se queda guardado en el teléfono.
+
 ### Sueño en Habits (versión 1.4.1)
 - Debajo del botón **Done** de Habits hay un botón **Going to sleep**. Púlsalo al irte a dormir: queda registrada la hora y el botón cambia a **Wake up · asleep since 23:40**.
 - Al despertarte, púlsalo otra vez: se guarda la hora de despertar.
