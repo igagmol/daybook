@@ -22,7 +22,7 @@
   --alert-red: #E5484D;
   --alert-yellow: #F5C518;
 
-  /* Language and Habits: grey until done today, then green (Habits: 1, 2, 3 times) */
+  /* Habits: grey until done today, then yellow (1 press), green (2), stronger green (3), bright green (4) */
   --daily-0: #E3E7EC;
   --daily-0-fg: #5B6672;
   --green-1: #C6EFD0;
@@ -30,15 +30,17 @@
   --green-3: #1FD65F;
   --green-fg: #1E5C34;
   --green-full: #5ACF7E;
+  --habit-yellow: #FBE38A;
+  --habit-yellow-fg: #6B5310;
   /* Sleep line and button (Habits) */
   --sleep-bg: #E4E3F7;
   --sleep-fg: #4B47A0;
 
-  /* Mode tile: snail (slow, mindful) and squirrel (fast) */
-  --snail-bg: #FFD9B8;
-  --snail-fg: #9A5420;
-  --squirrel-bg: #E3C9A8;
-  --squirrel-fg: #6B4423;
+  /* Water tile: bottle fills with each glass (5 a day) */
+  --water-bg: #E1F2FB;
+  --water-fg: #1F5F86;
+  --water: #4AB3E8;
+  --water-full-bg: #BDE5F8;
 
   /* Google branding (Sign in with Google button only) */
   --gsi-bg: #FFFFFF;
@@ -144,23 +146,31 @@ ul { margin: 0; padding: 0; list-style: none; }
 .tile-events { background: var(--blue-300); }
 .tile-money { background: var(--blue-300); }
 .tile-notes { background: var(--blue-400); }
-.tile-mode { transition: transform var(--dur) var(--ease), background-color var(--dur) var(--ease); }
-.tile-mode[data-mode="snail"] { background: var(--snail-bg); }
-.tile-mode[data-mode="snail"] .tile-label { color: var(--snail-fg); }
-.tile-mode[data-mode="squirrel"] { background: var(--squirrel-bg); }
-.tile-mode[data-mode="squirrel"] .tile-label { color: var(--squirrel-fg); }
-.mode-emoji { font-size: clamp(34px, 7vh, 54px); line-height: 1; }
-.mode-emoji.pop { animation: mode-pop 320ms var(--ease); }
-@keyframes mode-pop { 0% { transform: scale(0.6); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
-@media (prefers-reduced-motion: reduce) { .mode-emoji.pop { animation: none; } }
-.tile-language, .tile-habits { background: var(--daily-0); color: var(--daily-0-fg); transition: transform var(--dur) var(--ease), background-color var(--dur) var(--ease); }
-.tile[data-level="1"] { background: var(--green-1); color: var(--green-fg); }
-.tile[data-level="2"] { background: var(--green-2); color: var(--green-fg); }
-.tile[data-level="3"] { background: var(--green-3); color: var(--green-fg); box-shadow: 0 4px 18px rgba(31, 214, 95, 0.35); }
-.tile[data-level="full"] { background: var(--green-full); color: var(--green-fg); }
-.tile[data-level="0"] .tile-label { color: var(--daily-0-fg); }
-.tile[data-level="1"] .tile-label, .tile[data-level="2"] .tile-label,
-.tile[data-level="3"] .tile-label, .tile[data-level="full"] .tile-label { color: var(--green-fg); }
+.tile-waste { background: var(--blue-300); }
+.tile-sub { font-size: 13px; font-weight: 600; color: var(--blue-800); margin-top: -6px; font-variant-numeric: tabular-nums; }
+.tile-water {
+  background: var(--water-bg); color: var(--water-fg);
+  -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
+  transition: transform var(--dur) var(--ease), background-color var(--dur) var(--ease);
+}
+.tile-water .tile-label, .tile-water .tile-sub { color: var(--water-fg); }
+.tile-water[data-level="full"] { background: var(--water-full-bg); }
+.bottle { width: clamp(36px, 7.5vh, 56px); height: clamp(36px, 7.5vh, 56px); overflow: visible; }
+.bottle-outline { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.bottle-water { fill: var(--water); transition: y 260ms var(--ease), height 260ms var(--ease); }
+.bottle-lines path { stroke: currentColor; stroke-width: 1; opacity: 0.45; stroke-linecap: round; }
+.bottle.pop { animation: water-pop 320ms var(--ease); }
+@keyframes water-pop { 0% { transform: scale(0.8); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .bottle.pop { animation: none; } .bottle-water { transition: none; } }
+.tile-habits { background: var(--daily-0); color: var(--daily-0-fg); transition: transform var(--dur) var(--ease), background-color var(--dur) var(--ease); }
+.tile-habits[data-level="1"] { background: var(--habit-yellow); color: var(--habit-yellow-fg); }
+.tile-habits[data-level="2"] { background: var(--green-1); color: var(--green-fg); }
+.tile-habits[data-level="3"] { background: var(--green-2); color: var(--green-fg); }
+.tile-habits[data-level="4"] { background: var(--green-3); color: var(--green-fg); box-shadow: 0 4px 18px rgba(31, 214, 95, 0.35); }
+.tile-habits[data-level="0"] .tile-label { color: var(--daily-0-fg); }
+.tile-habits[data-level="1"] .tile-label { color: var(--habit-yellow-fg); }
+.tile-habits[data-level="2"] .tile-label, .tile-habits[data-level="3"] .tile-label,
+.tile-habits[data-level="4"] .tile-label { color: var(--green-fg); }
 .tile-icon { display: flex; }
 .tile-icon svg { width: clamp(36px, 7.5vh, 56px); height: clamp(36px, 7.5vh, 56px); }
 .tile-label { font-size: 16px; font-weight: 600; color: var(--blue-900); }
@@ -390,7 +400,7 @@ ul { margin: 0; padding: 0; list-style: none; }
 .event-list { display: flex; flex-direction: column; gap: 16px; }
 .group-title { font-size: 15px; font-weight: 700; color: var(--blue-700); margin: 0 4px 8px; }
 
-/* ---------- Language & Habits ---------- */
+/* ---------- Habits & Waste ---------- */
 
 .panel-daily .panel-body { display: flex; flex-direction: column; gap: 10px; padding-bottom: calc(var(--safe-b) + 16px); }
 .daily-month { flex: none; }
@@ -405,9 +415,9 @@ ul { margin: 0; padding: 0; list-style: none; }
   background: var(--green-full); color: var(--white);
 }
 .mark svg { stroke-width: 2.6; }
-.mark-1 { background: var(--green-1); color: var(--green-fg); }
-.mark-2 { background: var(--green-2); color: var(--white); }
-.mark-3 { background: var(--green-3); color: var(--white); box-shadow: 0 0 6px rgba(31, 214, 95, 0.6); }
+.mark-2 { background: var(--green-1); color: var(--green-fg); }
+.mark-3 { background: var(--green-2); color: var(--white); }
+.mark-4 { background: var(--green-3); color: var(--white); box-shadow: 0 0 6px rgba(31, 214, 95, 0.6); }
 .mark-num {
   position: absolute; right: -5px; bottom: -3px;
   min-width: 13px; height: 13px; padding: 0 2px; border-radius: 999px;
@@ -445,6 +455,25 @@ ul { margin: 0; padding: 0; list-style: none; }
 .done-2 { background: var(--green-2); color: var(--white); }
 .done-3 { background: var(--green-3); color: var(--white); box-shadow: 0 6px 24px rgba(31, 214, 95, 0.45); }
 .done-pips { display: flex; gap: 8px; }
+.done-pair { flex: 1; min-height: 100px; display: flex; gap: 10px; }
+.done-pair .done-btn { flex: 1; min-width: 0; min-height: 100px; }
+.done-pair .done-text { font-size: 24px; }
+.done-sub { font-size: 14px; font-weight: 700; opacity: 0.85; }
+.waste-add { background: var(--blue-700); }
+.waste-total {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 999px;
+  font-size: 14px; font-weight: 600; color: var(--blue-700);
+  background: var(--blue-100);
+  font-variant-numeric: tabular-nums;
+}
+.waste-total.waste-on { background: var(--owe-bg); color: var(--owe-fg); }
+.waste-mark {
+  font-size: 10.5px; font-weight: 800; line-height: 1.2; padding: 1px 4px; border-radius: 6px;
+  background: var(--owe-bg); color: var(--owe-fg); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.daily-day:has(.waste-mark) .day-num { font-size: 11px; color: var(--blue-700); }
+.waste-quick { display: flex; flex-wrap: wrap; gap: 8px; }
 .pip { width: 12px; height: 12px; border-radius: 999px; background: currentColor; opacity: 0.3; }
 .pip.on { opacity: 1; }
 .daily-info { flex: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }

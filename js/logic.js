@@ -264,3 +264,76 @@ export function formatDuration(ms) {
   const m = Math.round(ms / 60000);
   return `${Math.floor(m / 60)}h ${pad2(m % 60)}m`;
 }
+
+/* ---------- Habits: two Done buttons (Language and Habit) ---------- */
+
+/** Presses allowed per day in the Habits section. */
+export const HABIT_MAX = { language: 1, habits: 3 };
+/** Days with at least this many presses in total get a tick in the calendar (and count for the streak). */
+export const HABITS_TICK = 2;
+
+/**
+ * Total presses per day for the Habits section: Map date -> { language, habits, total }.
+ * Language keeps its own check-in items (kind "language"), so its old history still counts.
+ */
+export function habitDays(checkins) {
+  const map = new Map();
+  for (const c of checkins) {
+    if (c.kind !== 'language' && c.kind !== 'habits') continue;
+    const n = Math.min(Math.max(Number(c.count) || 0, 0), HABIT_MAX[c.kind]);
+    if (!n) continue;
+    const d = map.get(c.date) || { language: 0, habits: 0, total: 0 };
+    d[c.kind] = n;
+    d.total = d.language + d.habits;
+    map.set(c.date, d);
+  }
+  return map;
+}
+
+/** Map date -> total, only for days with a tick (2 presses or more). Used for the streak. */
+export function tickDays(days) {
+  const map = new Map();
+  for (const [date, d] of days) if (d.total >= HABITS_TICK) map.set(date, d.total);
+  return map;
+}
+
+/* ---------- Waste (time lost) ---------- */
+
+/** Minutes typed by the user: a whole number from 1 to 1440, or null. */
+export function parseMinutes(text) {
+  const t = String(text).trim();
+  if (!/^\d{1,4}$/.test(t)) return null;
+  const n = Number(t);
+  return n >= 1 && n <= 1440 ? n : null;
+}
+
+/** Map date -> total minutes wasted that day. Each "+" is one entry, so two devices never overwrite each other. */
+export function wasteByDay(entries) {
+  const map = new Map();
+  for (const e of entries) {
+    const m = Number(e.minutes) || 0;
+    if (m > 0) map.set(e.date, (map.get(e.date) || 0) + m);
+  }
+  return map;
+}
+
+/** "45 min", "1 h", "1 h 20 min": minutes below one hour, hours above. */
+export function formatMinutes(total) {
+  const m = Math.max(0, Math.round(total));
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60);
+  return m % 60 ? `${h} h ${m % 60} min` : `${h} h`;
+}
+
+/** Short form for a calendar cell: "45m", "1h", "1h20". */
+export function formatMinutesShort(total) {
+  const m = Math.max(0, Math.round(total));
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  return m % 60 ? `${h}h${pad2(m % 60)}` : `${h}h`;
+}
+
+/* ---------- Water ---------- */
+
+/** Glasses of water a day that fill the bottle. */
+export const WATER_GLASSES = 5;

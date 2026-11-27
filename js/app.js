@@ -5,14 +5,15 @@ import * as sync from './sync.js';
 import * as auth from './auth.js';
 import { mergeData } from './merge.js';
 import { todayStr } from './dates.js';
-import { eventAlert, pastEventIds } from './logic.js';
+import { eventAlert, pastEventIds, checkinId, WATER_GLASSES, formatMinutes } from './logic.js';
 import { el, icon, googleG, watchViewport, closeAllSheets, closeOpenRow, confirmSheet, showToast, hideToast } from './ui.js';
 import { createShopping } from './sections/shopping.js';
 import { createMeals } from './sections/meals.js';
 import { createEvents } from './sections/events.js';
 import { createTasks } from './sections/tasks.js';
 import { createNotes } from './sections/notes.js';
-import { createDaily, todayCount } from './sections/daily.js';
+import { createHabits, habitsLevel } from './sections/daily.js';
+import { createWaste, wasteToday } from './sections/waste.js';
 import { openAccountSheet } from './sections/account.js';
 
 let today = todayStr();
@@ -23,20 +24,17 @@ const TILES = [
   ['meals', 'Meals', 'tomato'],
   ['tasks', 'Tasks', 'check'],
   ['events', 'Events', 'calendar'],
-  ['language', 'Language', 'talk'],
+  ['waste', 'Waste', 'trash'],
   ['habits', 'Habits', 'smile'],
-  ['mode', 'Mode', null],
+  ['water', 'Water', null],
   ['notes', 'Notes', 'pencil'],
 ];
-
-// Daily check-in sections: presses allowed per day.
-const DAILY = { language: 1, habits: 3 };
 
 const app = document.getElementById('app');
 const sections = [
   createShopping(), createMeals(ctx), createTasks(ctx), createEvents(ctx),
-  createDaily(ctx, { id: 'language', title: 'Language', max: DAILY.language }),
-  createDaily(ctx, { id: 'habits', title: 'Habits', max: DAILY.habits, sleep: true }),
+  createWaste(ctx),
+  createHabits(ctx),
   createNotes(),
 ];
 const panels = new Map();
@@ -46,12 +44,13 @@ let openPanelId = null;
 
 function buildHome() {
   const grid = el('nav', { class: 'tiles', 'aria-label': 'Sections' },
-    TILES.map(([id, label, ic], i) => id === 'mode' ? buildModeTile(i) :
+    TILES.map(([id, label, ic], i) => id === 'water' ? buildWaterTile(i) :
       el('button', { type: 'button', class: `tile tile-${i + 1} tile-${id}`, 'data-id': id, onclick: () => openPanel(id) },
         [
           el('span', { class: 'tile-icon' }, [icon(ic, 56)]),
           el('span', { class: 'tile-label', text: label }),
           id === 'events' ? el('span', { class: 'tile-dot', id: 'events-dot', hidden: true, 'aria-hidden': 'true' }) : null,
+          id === 'waste' ? el('span', { class: 'tile-sub', id: 'waste-sub', hidden: true }) : null,
         ])));
   const bar = el('div', { class: 'home-bar' }, [
     el('button', { type: 'button', class: 'icon-btn account-btn', 'aria-label': 'Account', onclick: openAccount }, [icon('user', 26)]),
@@ -59,37 +58,97 @@ function buildHome() {
   return el('main', { class: 'home', id: 'home' }, [grid, bar]);
 }
 
-/* ---------- Mode (snail / squirrel) ---------- */
+/* ---------- Water ---------- */
 
-// Looks like a section but opens nothing: a tap switches between the two ways of living.
-const MODES = {
-  snail: { emoji: '🐌', name: 'Snail', hint: 'slow and mindful' },
-  squirrel: { emoji: '🐿️', name: 'Squirrel', hint: 'fast' },
+// Looks like a section but opens nothing: each tap is one glass, 5 glasses fill the bottle.
+// One synced check-in per day ("water:YYYY-MM-DD"), so the bottle is empty again every morning.
+// A long press takes one glass back (for a tap by mistake).
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const svgEl = (tag, attrs) => {
+  const n = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  return n;
 };
-const readMode = () => (store.readGlobal('mode') === 'squirrel' ? 'squirrel' : 'snail');
+const BOTTLE = 'M9.5 2.5h5v3c0 .8.6 1.3 1.3 1.9 1 .8 1.7 2 1.7 3.6v9.2a1.8 1.8 0 0 1-1.8 1.8H8.3a1.8 1.8 0 0 1-1.8-1.8V11c0-1.6.7-2.8 1.7-3.6.7-.6 1.3-1.1 1.3-1.9z';
+const BOTTLE_TOP = 9; // where the water can start (y), bottom is 22
+const BOTTLE_BOTTOM = 22;
 
-function buildModeTile(i) {
-  const emoji = el('span', { class: 'mode-emoji', 'aria-hidden': 'true' });
-  const tile = el('button', { type: 'button', class: `tile tile-${i + 1} tile-mode`, 'data-id': 'mode' }, [
-    el('span', { class: 'tile-icon' }, [emoji]),
-    el('span', { class: 'tile-label', text: 'Mode' }),
+function waterCount() {
+  return Math.min(Number(store.find('checkins', checkinId('water', today))?.count) || 0, WATER_GLASSES);
+}
+
+function setWater(n) {
+  store.upsert('checkins', checkinId('water', today), { kind: 'water', date: today, count: n });
+}
+
+function buildBottle() {
+  const svg = svgEl('svg', { viewBox: '0 0 24 24', class: 'bottle', 'aria-hidden': 'true', focusable: 'false' });
+  const clipId = 'bottle-clip';
+  const clip = svgEl('clipPath', { id: clipId });
+  clip.append(svgEl('path', { d: BOTTLE }));
+  const water = svgEl('rect', { class: 'bottle-water', x: '0', width: '24', y: String(BOTTLE_BOTTOM), height: '0', 'clip-path': `url(#${clipId})` });
+  const lines = svgEl('g', { class: 'bottle-lines' });
+  for (let i = 1; i < WATER_GLASSES; i++) {
+    const y = BOTTLE_BOTTOM - ((BOTTLE_BOTTOM - BOTTLE_TOP) * i) / WATER_GLASSES;
+    lines.append(svgEl('path', { d: `M6.5 ${y}h1.6M15.9 ${y}h1.6` }));
+  }
+  const outline = svgEl('path', { class: 'bottle-outline', d: BOTTLE });
+  const cap = svgEl('path', { class: 'bottle-outline', d: 'M9 2.5h6' });
+  const defs = svgEl('defs', {});
+  defs.append(clip);
+  svg.append(defs, water, lines, outline, cap);
+  return { svg, water };
+}
+
+function buildWaterTile(i) {
+  const { svg, water } = buildBottle();
+  const count = el('span', { class: 'tile-sub water-count' });
+  const tile = el('button', { type: 'button', class: `tile tile-${i + 1} tile-water`, 'data-id': 'water' }, [
+    el('span', { class: 'tile-icon' }, [svg]),
+    el('span', { class: 'tile-label', text: 'Water' }),
+    count,
   ]);
-  const paint = (mode) => {
-    const m = MODES[mode];
-    tile.dataset.mode = mode;
-    emoji.textContent = m.emoji;
-    tile.setAttribute('aria-label', `Mode: ${m.name} (${m.hint}). Tap to switch.`);
+  tile._paint = () => {
+    const n = waterCount();
+    const h = ((BOTTLE_BOTTOM - BOTTLE_TOP) * n) / WATER_GLASSES;
+    water.setAttribute('y', String(BOTTLE_BOTTOM - h));
+    water.setAttribute('height', String(h));
+    tile.dataset.level = n >= WATER_GLASSES ? 'full' : String(n);
+    count.textContent = `${n}/${WATER_GLASSES}`;
+    tile.setAttribute('aria-label', `Water, ${n} of ${WATER_GLASSES} glasses today. Tap to add a glass, long press to take one back.`);
   };
-  tile.addEventListener('click', () => {
-    const next = readMode() === 'snail' ? 'squirrel' : 'snail';
-    store.writeGlobal('mode', next);
-    paint(next);
-    emoji.classList.remove('pop');
-    void emoji.offsetWidth; // restart the animation
-    emoji.classList.add('pop');
+  let holdTimer = null;
+  let held = false;
+  const cancelHold = () => { clearTimeout(holdTimer); holdTimer = null; };
+  tile.addEventListener('pointerdown', () => {
+    held = false;
+    cancelHold();
+    holdTimer = setTimeout(() => {
+      held = true;
+      const n = waterCount();
+      if (n > 0) { setWater(n - 1); flashToast('One glass taken back'); }
+    }, 550);
   });
-  paint(readMode());
+  for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) tile.addEventListener(ev, cancelHold);
+  tile.addEventListener('contextmenu', (e) => e.preventDefault());
+  tile.addEventListener('click', () => {
+    if (held) { held = false; return; }
+    const n = waterCount();
+    if (n >= WATER_GLASSES) return;
+    setWater(n + 1);
+    svg.classList.remove('pop');
+    void svg.offsetWidth; // restart the animation
+    svg.classList.add('pop');
+    if (n + 1 === WATER_GLASSES) flashToast('Bottle full, well done!');
+  });
   return tile;
+}
+
+let toastTimer = null;
+function flashToast(text) {
+  clearTimeout(toastTimer);
+  showToast(text);
+  toastTimer = setTimeout(hideToast, 2000);
 }
 
 function buildPanel(sec) {
@@ -147,17 +206,25 @@ function renderAll() {
   renderDailyTiles();
 }
 
-/** Language and Habits tiles: grey until done today, then green (Habits: three shades for 1, 2, 3). */
+/**
+ * Habits tile: grey until a Done today, then yellow (1 press), green (2), stronger green (3)
+ * and bright green (4: three Habit + one Language). Presses of both buttons add up.
+ */
 function renderDailyTiles() {
-  for (const [id, max] of Object.entries(DAILY)) {
-    const tile = document.querySelector(`.tile-${id}`);
-    if (!tile) continue;
-    const n = Math.min(todayCount(id, today), max);
-    tile.dataset.level = max === 1 ? (n ? 'full' : '0') : String(n);
-    const label = TILES.find((t) => t[0] === id)[1];
-    const note = n ? (max > 1 ? `, done ${n} of ${max} today` : ', done today') : ', not done today';
-    tile.setAttribute('aria-label', `${label}${note}`);
+  const habits = document.querySelector('.tile-habits');
+  if (habits) {
+    const n = habitsLevel(today);
+    habits.dataset.level = String(n);
+    habits.setAttribute('aria-label', `Habits${n ? `, done ${n} of 4 today` : ', not done today'}`);
   }
+  const sub = document.getElementById('waste-sub');
+  if (sub) {
+    const m = wasteToday(today);
+    sub.hidden = !m;
+    sub.textContent = m ? formatMinutes(m) : '';
+    sub.closest('.tile').setAttribute('aria-label', `Waste${m ? `, ${formatMinutes(m)} today` : ''}`);
+  }
+  document.querySelector('.tile-water')?._paint();
 }
 
 /** Red dot on the Events tile for an event today, yellow for tomorrow or the day after. */
