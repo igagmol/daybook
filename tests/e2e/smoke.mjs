@@ -88,66 +88,101 @@ await step('home: eight tiles fill the screen, no overflow', async () => {
   const sw = await page.evaluate(() => document.documentElement.scrollWidth);
   assert.ok(sw <= vp.width, 'no horizontal overflow');
   const labels = await page.locator('.tile-label').allTextContents();
-  assert.deepEqual(labels, ['Shopping', 'Meals', 'Tasks', 'Events', 'Language', 'Habits', 'Mode', 'Notes']);
+  assert.deepEqual(labels, ['Shopping', 'Meals', 'Tasks', 'Events', 'Waste', 'Habits', 'Water', 'Notes']);
 });
 
 const tileLevel = (page, id) => page.locator(`.tile-${id}`).getAttribute('data-level');
 
-await step('language: grey tile, big Done turns it green, calendar tick, streak, undo', async () => {
-  assert.equal(await tileLevel(page, 'language'), '0');
+await step('habits: Language + Habit buttons, yellow/green tile, tick from 2, old Language history kept', async () => {
+  assert.equal(await tileLevel(page, 'habits'), '0');
   const y1 = await isoIn(page, -1);
   const y2 = await isoIn(page, -2);
   await page.evaluate(([y1, y2]) => {
     const k = 'daybook:v1:local:data';
     const d = JSON.parse(localStorage.getItem(k) || '{"version":1}');
-    d.checkins = [y1, y2].map((date, i) => ({ id: `language:${date}`, kind: 'language', date, count: 1, createdAt: i + 1, updatedAt: i + 1 }));
+    // Yesterday: old Language + one Habit (tick). The day before: Language only (no tick).
+    d.checkins = [
+      { id: `language:${y1}`, kind: 'language', date: y1, count: 1, createdAt: 1, updatedAt: 1 },
+      { id: `habits:${y1}`, kind: 'habits', date: y1, count: 1, createdAt: 2, updatedAt: 2 },
+      { id: `language:${y2}`, kind: 'language', date: y2, count: 1, createdAt: 3, updatedAt: 3 },
+    ];
     localStorage.setItem(k, JSON.stringify(d));
   }, [y1, y2]);
   await page.reload(); await page.waitForSelector('.tile');
-  await openSection(page, 'Language');
-  const p = page.locator('#p-language');
-  assert.match(await p.locator('.streak').textContent(), /^2-day streak · keep it going today$/);
-  assert.ok(await p.getByRole('button', { name: 'Next month' }).isDisabled());
-  await shot(page, '20-language-before');
-  await p.locator('.done-btn').click();
-  assert.equal(await p.locator('.streak').textContent(), '3-day streak');
-  assert.ok(await p.locator('.done-btn').isDisabled());
-  assert.equal(await p.locator('.daily-day.today .mark').count(), 1);
-  await shot(page, '21-language-done');
-  await p.getByRole('button', { name: 'Previous month' }).click();
-  assert.ok(await p.getByRole('button', { name: 'Next month' }).isEnabled());
-  await p.getByRole('button', { name: 'Next month' }).click();
-  await back(page);
-  assert.equal(await tileLevel(page, 'language'), 'full');
-  await page.reload(); await page.waitForSelector('.tile');
-  assert.equal(await tileLevel(page, 'language'), 'full');
-  await openSection(page, 'Language');
-  await p.getByRole('button', { name: 'Undo' }).click();
-  assert.equal(await p.locator('.daily-day.today .mark').count(), 0);
-  await back(page);
-  assert.equal(await tileLevel(page, 'language'), '0');
-});
-
-await step('habits: up to 3 presses, three green shades on tile and calendar', async () => {
   await openSection(page, 'Habits');
   const p = page.locator('#p-habits');
-  assert.equal(await p.locator('.streak').textContent(), 'Start your streak today');
-  for (const n of [1, 2, 3]) {
-    await p.locator('.done-btn').click();
-    assert.equal(await p.locator('.daily-day.today .mark-num').textContent(), String(n));
-    assert.equal(await p.locator('.daily-day.today .mark').getAttribute('class'), `mark mark-${n}`);
-    await back(page);
-    assert.equal(await tileLevel(page, 'habits'), String(n));
-    if (n === 2) await shot(page, '22-home-habits-2');
-    await openSection(page, 'Habits');
-  }
-  assert.ok(await p.locator('.done-btn').isDisabled());
-  await p.locator('.done-btn').click({ force: true });
-  assert.equal(await p.locator('.daily-day.today .mark-num').textContent(), '3');
-  assert.equal(await p.locator('.streak').textContent(), '1-day streak');
-  await shot(page, '23-habits-3');
+  assert.equal(await p.locator('.daily-day .mark').count(), 1, 'only the day with 2 presses has a tick');
+  assert.equal(await p.locator('.streak').textContent(), '1-day streak · keep it going today');
+  const lang = p.locator('.done-language');
+  const habit = p.locator('.done-habits');
+  await shot(page, '20-habits-before');
+  // 1 press: yellow, no tick yet.
+  await habit.click();
+  assert.equal(await p.locator('.daily-day.today .mark').count(), 0);
   await back(page);
-  await shot(page, '24-home-daily');
+  assert.equal(await tileLevel(page, 'habits'), '1');
+  await shot(page, '21-home-habits-yellow');
+  await openSection(page, 'Habits');
+  // 2 presses (Language + Habit): green, tick, streak goes on.
+  await lang.click();
+  assert.ok(await lang.isDisabled(), 'Language once a day');
+  assert.equal(await p.locator('.daily-day.today .mark').getAttribute('class'), 'mark mark-2');
+  assert.equal(await p.locator('.streak').textContent(), '2-day streak');
+  await back(page);
+  assert.equal(await tileLevel(page, 'habits'), '2');
+  await openSection(page, 'Habits');
+  await habit.click();
+  await habit.click();
+  assert.ok(await habit.isDisabled(), 'Habit 3 times a day');
+  assert.equal(await p.locator('.daily-day.today .mark').getAttribute('class'), 'mark mark-4');
+  await shot(page, '22-habits-full');
+  await back(page);
+  assert.equal(await tileLevel(page, 'habits'), '4');
+  await shot(page, '23-home-habits-bright');
+  // Undo takes back the latest press (a Habit), then the next latest.
+  await openSection(page, 'Habits');
+  await p.getByRole('button', { name: 'Undo' }).click();
+  assert.ok(await habit.isEnabled());
+  assert.ok(await lang.isDisabled());
+  await back(page);
+  assert.equal(await tileLevel(page, 'habits'), '3');
+  await page.reload(); await page.waitForSelector('.tile');
+  assert.equal(await tileLevel(page, 'habits'), '3');
+});
+
+await step('waste: + adds minutes, they add up, calendar shows the total, undo', async () => {
+  await openSection(page, 'Waste');
+  const p = page.locator('#p-waste');
+  assert.equal(await p.locator('.waste-total').textContent(), 'Today: nothing wasted');
+  await p.getByRole('button', { name: 'Add minutes' }).click();
+  await page.waitForTimeout(260);
+  const input = page.locator('.sheet input');
+  assert.ok(await input.evaluate((n) => n === document.activeElement), 'minutes field focused');
+  assert.equal(await input.getAttribute('inputmode'), 'numeric');
+  await shot(page, '24-waste-sheet');
+  await input.fill('25');
+  await input.press('Enter');
+  await page.waitForTimeout(260);
+  assert.equal(await p.locator('.waste-total').textContent(), 'Today: 25 min wasted');
+  await p.getByRole('button', { name: 'Add minutes' }).click();
+  await page.waitForTimeout(260);
+  await page.locator('.sheet').getByRole('button', { name: '+30 min' }).click();
+  await page.waitForTimeout(260);
+  assert.equal(await p.locator('.waste-total').textContent(), 'Today: 55 min wasted');
+  await p.getByRole('button', { name: 'Add minutes' }).click();
+  await page.waitForTimeout(260);
+  await page.locator('.sheet input').fill('10');
+  await page.locator('.sheet').getByRole('button', { name: 'Add', exact: true }).click();
+  await page.waitForTimeout(260);
+  assert.equal(await p.locator('.waste-total').textContent(), 'Today: 1 h 5 min wasted');
+  assert.equal(await p.locator('.daily-day.today .waste-mark').textContent(), '1h05');
+  await shot(page, '25-waste');
+  await p.getByRole('button', { name: 'Undo' }).click();
+  assert.equal(await p.locator('.waste-total').textContent(), 'Today: 55 min wasted');
+  await back(page);
+  assert.equal(await page.locator('#waste-sub').textContent(), '55 min');
+  await page.reload(); await page.waitForSelector('.tile');
+  assert.equal(await page.locator('#waste-sub').textContent(), '55 min');
 });
 
 await step('shopping: add several, swipe-delete, clear all, persistence', async () => {
@@ -539,20 +574,24 @@ await step('notes: autosave and restore', async () => {
   await back(page);
 });
 
-await step('mode: tile opens nothing, toggles snail/squirrel, persists', async () => {
-  const tile = page.locator('.tile-mode');
-  assert.equal(await tile.getAttribute('data-mode'), 'snail');
-  assert.equal(await tile.locator('.mode-emoji').textContent(), '🐌');
-  await tile.click(); await page.waitForTimeout(350);
+await step('water: tile opens nothing, each tap fills one glass, 5 = full, long press takes one back', async () => {
+  const tile = page.locator('.tile-water');
+  assert.equal(await tile.getAttribute('data-level'), '0');
+  assert.equal(await tile.locator('.water-count').textContent(), '0/5');
+  for (let i = 1; i <= 6; i++) { await tile.click(); await page.waitForTimeout(80); }
   assert.equal(await page.locator('.panel.open').count(), 0, 'no panel opened');
-  assert.equal(await tile.getAttribute('data-mode'), 'squirrel');
-  assert.equal(await tile.locator('.mode-emoji').textContent(), '🐿️');
-  await shot(page, '14-mode-squirrel');
+  assert.equal(await tile.getAttribute('data-level'), 'full');
+  assert.equal(await tile.locator('.water-count').textContent(), '5/5');
+  await page.waitForTimeout(400);
+  await shot(page, '14-water-full');
+  const box = await tile.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down(); await page.waitForTimeout(800); await page.mouse.up();
+  await page.waitForTimeout(100);
+  assert.equal(await tile.locator('.water-count').textContent(), '4/5');
   await page.reload(); await page.waitForSelector('.tile');
-  assert.equal(await page.locator('.tile-mode').getAttribute('data-mode'), 'squirrel');
-  await page.locator('.tile-mode').click(); await page.waitForTimeout(350);
-  assert.equal(await page.locator('.tile-mode').getAttribute('data-mode'), 'snail');
-  await shot(page, '15-mode-snail');
+  assert.equal(await page.locator('.tile-water .water-count').textContent(), '4/5');
+  await shot(page, '15-water-4');
 });
 
 await step('account sheet (local profile) and export', async () => {
@@ -630,28 +669,35 @@ await step('signed-in: remembered account opens instantly offline; namespaces ar
   await c2.close();
 });
 
-await step('language and habits reset at local midnight', async () => {
+await step('habits, water and waste reset at local midnight', async () => {
   const { ctx: c3, page: p3 } = await newPage();
   await c3.route('**/config.js', async (route) => {
     const body = (await readFile(join(ROOT, 'config.js'), 'utf8')).replace(/GOOGLE_CLIENT_ID = "[^"]*"/, 'GOOGLE_CLIENT_ID = ""');
     await route.fulfill({ body, contentType: 'text/javascript' });
   });
-  await p3.clock.install({ time: new Date(2026, 10, 22, 23, 59, 0) });
+  await p3.clock.install({ time: new Date(2026, 10, 22, 23, 58, 0) });
   await p3.goto(BASE); await p3.waitForSelector('.tile');
   await openSection(p3, 'Habits');
-  await p3.locator('#p-habits .done-btn').click();
+  await p3.locator('#p-habits .done-habits').click();
+  await p3.locator('#p-habits .done-language').click();
   await back(p3);
-  await openSection(p3, 'Language');
-  await p3.locator('#p-language .done-btn').click();
+  await p3.locator('.tile-water').click();
+  await openSection(p3, 'Waste');
+  await p3.getByRole('button', { name: 'Add minutes' }).click();
+  await p3.waitForTimeout(260);
+  await p3.locator('.sheet').getByRole('button', { name: '+5 min' }).click();
+  await p3.waitForTimeout(260);
   await back(p3);
-  assert.equal(await tileLevel(p3, 'habits'), '1');
-  assert.equal(await tileLevel(p3, 'language'), 'full');
-  await p3.clock.runFor(2 * 60_000);
+  assert.equal(await tileLevel(p3, 'habits'), '2');
+  assert.equal(await p3.locator('.tile-water .water-count').textContent(), '1/5');
+  assert.equal(await p3.locator('#waste-sub').textContent(), '5 min');
+  await p3.clock.runFor(3 * 60_000);
   assert.equal(await tileLevel(p3, 'habits'), '0');
-  assert.equal(await tileLevel(p3, 'language'), '0');
-  await openSection(p3, 'Language');
-  assert.ok(await p3.locator('#p-language .done-btn').isEnabled());
-  assert.equal(await p3.locator('#p-language .streak').textContent(), '1-day streak · keep it going today');
+  assert.equal(await p3.locator('.tile-water .water-count').textContent(), '0/5');
+  assert.ok(await p3.locator('#waste-sub').isHidden());
+  await openSection(p3, 'Habits');
+  assert.ok(await p3.locator('#p-habits .done-language').isEnabled());
+  assert.equal(await p3.locator('#p-habits .streak').textContent(), '1-day streak · keep it going today');
   await c3.close();
 });
 

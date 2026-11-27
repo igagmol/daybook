@@ -1,6 +1,6 @@
 // Daybook service worker. Cache-first for same-origin GET requests.
 // VERSION is updated by scripts/bump-version.mjs together with config.js.
-const VERSION = '1.6.0';
+const VERSION = '1.7.0';
 const CACHE = `daybook-v${VERSION}`;
 
 const FILES = [
@@ -25,6 +25,7 @@ const FILES = [
   './js/sections/notes.js',
   './js/sections/shopping.js',
   './js/sections/tasks.js',
+  './js/sections/waste.js',
   './icons/apple-touch-icon.png',
   './icons/icon-192.png',
   './icons/icon-512.png',

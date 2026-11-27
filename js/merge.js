@@ -1,7 +1,7 @@
 // Pure merge logic for sync. No DOM, no storage: safe to unit test with node --test.
 
 export const SCHEMA_VERSION = 1;
-export const COLLECTIONS = ['shopping', 'recipes', 'ingredients', 'meals', 'money', 'events', 'tasks', 'checkins', 'sleep'];
+export const COLLECTIONS = ['shopping', 'recipes', 'ingredients', 'meals', 'money', 'events', 'tasks', 'checkins', 'sleep', 'waste'];
 export const TOMBSTONE_TTL_MS = 365 * 24 * 60 * 60 * 1000;
 
 export function emptyData() {

@@ -164,6 +164,12 @@ La pantalla principal tiene ahora 8 botones: Shopping, Meals, Tasks, Events, **L
 - Vuelve el botón **Going to sleep / Wake up** de Habits, igual que en la 1.4.1. El teclado dejó de salir por un fallo del iPhone, que se arregló reiniciándolo.
 - Las actualizaciones se aplican solas: al abrir la app, si hay versión nueva, se recarga sola en unos segundos.
 
+### Waste, Water y Habits con dos botones (versión 1.7.0)
+- Donde estaba **Language** ahora está **Waste** (papelera). Dentro hay un botón grande **+ Add minutes**: escribe los minutos que has perdido (por ejemplo 5 de Instagram) o toca **+5 / +10 / +15 / +30 min**. Se van sumando. Arriba sale el total de hoy en minutos, o en horas a partir de 60 minutos ("1 h 20 min"), y el botón de la pantalla principal también lo muestra. En el calendario cada día lleva su total ("45m", "1h20"). **Undo** quita lo último que añadiste hoy.
+- Donde estaba el caracol ahora está **Water** (botella). No abre nada: cada toque es un vaso y la botella se llena; con **5** queda llena. Si tocas sin querer, **mantén pulsado** para quitar un vaso. A las 00:00 vuelve a estar vacía.
+- **Habits** tiene dos botones: **Language** (1 vez al día; conserva todo el historial de la antigua sección Language) y **Habit** (hasta 3 veces). El botón de la pantalla principal cuenta las pulsaciones de los dos juntos: **amarillo** con 1, **verde claro** con 2, **verde** con 3 y **verde brillante** con 4 (3 Habit + 1 Language).
+- En el calendario sale el ✓ cuando hay **al menos 2** pulsaciones en el día (Language + Habit, o dos Habit), con el número total. La racha cuenta los días con ✓. **Undo** quita la última pulsación de hoy, sea del botón que sea.
+
 ## 7. Inicio de sesión dentro de la app del iPhone (lo que he averiguado)
 
 - La app usa primero la ventana emergente oficial de Google (Google Identity Services).
