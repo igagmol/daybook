@@ -170,6 +170,9 @@ La pantalla principal tiene ahora 8 botones: Shopping, Meals, Tasks, Events, **L
 - **Habits** tiene dos botones: **Language** (1 vez al día; conserva todo el historial de la antigua sección Language) y **Habit** (hasta 3 veces). El botón de la pantalla principal cuenta las pulsaciones de los dos juntos: **amarillo** con 1, **verde claro** con 2, **verde** con 3 y **verde brillante** con 4 (3 Habit + 1 Language).
 - En el calendario sale el ✓ cuando hay **al menos 2** pulsaciones en el día (Language + Habit, o dos Habit), con el número total. La racha cuenta los días con ✓. **Undo** quita la última pulsación de hoy, sea del botón que sea.
 
+### Dormir pasa a Waste (versión 1.7.1)
+- El botón **Going to sleep / Wake up** y la línea con las horas de dormir están ahora en **Waste**, debajo de **+ Add minutes**. Funciona igual que antes: punto morado en los días con sueño y toca un día para ver sus horas. Habits ya no tiene ese botón.
+
 ## 7. Inicio de sesión dentro de la app del iPhone (lo que he averiguado)
 
 - La app usa primero la ventana emergente oficial de Google (Google Identity Services).
